@@ -1,0 +1,27 @@
+# Django project specific files
+*.pyc
+__pycache__/
+*.sqlite3
+media/
+static_root/
+
+# Virtual environment
+venv/
+.venv/
+
+# Environment variables
+.env
+*.local # For local_settings.py or similar
+
+# IDE and editor files
+.vscode/ # VS Code
+*~ # Emacs, Vim swap files
+*.log # Log files
+.DS_Store # macOS
+.Trashes # macOS
+Thumbs.db
+
+# Celery and Redis related files (if applicable and not in DB)
+.celery/
+dump.rdb
+appendonly.aof
