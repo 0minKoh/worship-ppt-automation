@@ -129,6 +129,12 @@ CELERY_TASK_TRACK_STARTED = True                # 태스크가 시작되었을 �
 
 STATIC_URL = "static/"
 
+# Media files (User-uploaded files)
+## FileField, ImageField 등에서 사용되는 파일 저장 경로 설정
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
