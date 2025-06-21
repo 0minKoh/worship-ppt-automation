@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>메인 페이지</title>
+    <style>
+        body { font-family: sans-serif; display: flex; flex-direction: column; justify-content: center; align-items: center; min-height: 100vh; background-color: #f4f4f4; }
+        .container { background-color: #fff; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); width: 600px; text-align: center; }
+        h2 { margin-bottom: 20px; color: #333; }
+        p { margin-bottom: 10px; }
+        .role-info { font-weight: bold; color: #007bff; }
+        .logout-btn { margin-top: 20px; padding: 10px 20px; background-color: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; text-decoration: none; display: inline-block;}
+        .logout-btn:hover { background-color: #c82333; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>환영합니다, {{ username }}님!</h2>
+        <p>여기는 프로젝트의 메인 대시보드입니다.</p>
+
+        <h3>당신의 역할:</h3>
+        {% if is_media_team %}
+            <p class="role-info">미디어팀</p>
+        {% endif %}
+        {% if is_worship_prep_team %}
+            <p class="role-info">예배준비팀</p>
+        {% endif %}
+        {% if is_praise_team %}
+            <p class="role-info">찬양팀</p>
+        {% endif %}
+        {% if is_member %}
+            <p class="role-info">교인</p>
+        {% endif %}
+        {% if not is_media_team and not is_worship_prep_team and not is_praise_team and not is_member %}
+            <p>할당된 역할이 없습니다.</p>
+        {% endif %}
+
+        <a href="{% url 'logout' %}" class="logout-btn">로그아웃</a>
+    </div>
+</body>
+</html>

@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>로그인</title>
+    <style>
+        body { font-family: sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; background-color: #f4f4f4; }
+        .login-container { background-color: #fff; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); width: 300px; text-align: center; }
+        h2 { margin-bottom: 20px; color: #333; }
+        input[type="text"], input[type="password"] { width: calc(100% - 20px); padding: 10px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 4px; }
+        button { background-color: #007bff; color: white; padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; width: 100%; }
+        button:hover { background-color: #0056b3; }
+        .errorlist { color: red; list-style-type: none; padding: 0; margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <h2>로그인</h2>
+        {% if form.errors %}
+            <ul class="errorlist">
+                {% for field in form %}
+                    {% if field.errors %}
+                        {% for error in field.errors %}
+                            <li>{{ error }}</li>
+                        {% endfor %}
+                    {% endif %}
+                {% endfor %}
+                {% if form.non_field_errors %}
+                    {% for error in form.non_field_errors %}
+                        <li>{{ error }}</li>
+                    {% endfor %}
+                {% endif %}
+            </ul>
+        {% endif %}
+        <form method="post">
+            {% csrf_token %}
+            <input type="text" name="username" id="id_username" placeholder="사용자 이름" required>
+            <input type="password" name="password" id="id_password" placeholder="비밀번호" required>
+            <button type="submit">로그인</button>
+        </form>
+        <p>비밀번호를 잊으셨나요? <a href="{% url 'password_reset' %}">여기를 클릭하세요.</a></p>
+    </div>
+</body>
+</html>
