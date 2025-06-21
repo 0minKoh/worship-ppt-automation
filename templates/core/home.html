@@ -1,42 +1,161 @@
+<!-- templates/core/home.html -->
 <!DOCTYPE html>
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>메인 페이지</title>
+    <title>메인 대시보드 - 예배 PPT 자동화</title>
     <style>
-        body { font-family: sans-serif; display: flex; flex-direction: column; justify-content: center; align-items: center; min-height: 100vh; background-color: #f4f4f4; }
-        .container { background-color: #fff; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); width: 600px; text-align: center; }
-        h2 { margin-bottom: 20px; color: #333; }
-        p { margin-bottom: 10px; }
-        .role-info { font-weight: bold; color: #007bff; }
-        .logout-btn { margin-top: 20px; padding: 10px 20px; background-color: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; text-decoration: none; display: inline-block;}
-        .logout-btn:hover { background-color: #c82333; }
+        body {
+            font-family: 'Inter', sans-serif;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-color: #f0f2f5;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        .dashboard-container {
+            background-color: #ffffff;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 800px;
+            text-align: center;
+            box-sizing: border-box;
+            color: #333;
+        }
+        h2 {
+            color: #2c3e50;
+            margin-bottom: 25px;
+            font-size: 2em;
+        }
+        .user-info {
+            font-size: 1.1em;
+            margin-bottom: 30px;
+            color: #555;
+        }
+        .status-box {
+            background-color: #e3f2fd;
+            border: 1px solid #bbdefb;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+        }
+        .status-box h3 {
+            color: #1976d2;
+            margin-top: 0;
+            margin-bottom: 15px;
+            font-size: 1.5em;
+        }
+        .status-message {
+            font-size: 1.8em;
+            font-weight: bold;
+            color: #d32f2f; /* 기본적으로 빨간색, 변경 가능 */
+        }
+        .status-message.completed { color: #388e3c; } /* 완료 시 녹색 */
+        .status-message.processing { color: #fbc02d; } /* 진행 중 시 주황색 */
+        .status-message.pending { color: #007bff; } /* 대기 중 시 파란색 */
+
+        .button-group {
+            margin-top: 30px;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 15px; /* 버튼 간 간격 */
+        }
+        .action-button {
+            background-color: #4CAF50; /* Green */
+            color: white;
+            padding: 12px 25px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1.1em;
+            text-decoration: none;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            flex: 1 1 auto; /* 유연하게 확장/축소 */
+            min-width: 200px; /* 최소 너비 */
+            max-width: 250px;
+        }
+        .action-button:hover {
+            background-color: #45a049;
+            transform: translateY(-2px);
+        }
+        .action-button.primary { background-color: #007bff; }
+        .action-button.primary:hover { background-color: #0056b3; }
+        .action-button.secondary { background-color: #6c757d; }
+        .action-button.secondary:hover { background-color: #5a6268; }
+        .action-button.danger { background-color: #dc3545; }
+        .action-button.danger:hover { background-color: #c82333; }
+
+        /* 로그아웃 버튼 스타일 (a 태그가 아닌 button 태그에 적용) */
+        .logout-form button {
+            margin-top: 40px;
+            padding: 10px 20px;
+            background-color: #dc3545;
+            color: white;
+            border: 1px solid #dc3545; /* 테두리 색상 추가 */
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 1.1em;
+            transition: all 0.3s ease;
+            text-decoration: none; /* a 태그가 아니므로 필요 없지만, 시각적 일관성 위해 남김 */
+        }
+        .logout-form button:hover {
+            background-color: #c82333;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
     </style>
 </head>
 <body>
-    <div class="container">
+    <div class="dashboard-container">
         <h2>환영합니다, {{ username }}님!</h2>
-        <p>여기는 프로젝트의 메인 대시보드입니다.</p>
+        <p class="user-info">
+            {% if user_is_media_team %} <span style="color: #1a73e8;">미디어팀</span> {% endif %}
+            {% if user_is_praise_team %} <span style="color: #e91e63;">찬양팀</span> {% endif %}
+            {% if user_is_worship_prep_team %} <span style="color: #673ab7;">예배준비팀</span> {% endif %}
+            {% if user_is_member and not user_is_media_team and not user_is_praise_team and not user_is_worship_prep_team %} <span style="color: #4caf50;">교인</span> {% endif %}
+            {% if not user_is_media_team and not user_is_praise_team and not user_is_worship_prep_team and not user_is_member %} 할당된 역할이 없습니다. {% endif %}
+        </p>
 
-        <h3>당신의 역할:</h3>
-        {% if is_media_team %}
-            <p class="role-info">미디어팀</p>
-        {% endif %}
-        {% if is_worship_prep_team %}
-            <p class="role-info">예배준비팀</p>
-        {% endif %}
-        {% if is_praise_team %}
-            <p class="role-info">찬양팀</p>
-        {% endif %}
-        {% if is_member %}
-            <p class="role-info">교인</p>
-        {% endif %}
-        {% if not is_media_team and not is_worship_prep_team and not is_praise_team and not is_member %}
-            <p>할당된 역할이 없습니다.</p>
-        {% endif %}
+        <div class="status-box">
+            <h3>{{ upcoming_sunday }} 주일 예배 PPT 현황</h3>
+            <p class="status-message 
+                {% if ppt_status_display == '제작 완료' %}completed{% elif ppt_status_display == '제작 중' %}processing{% elif ppt_status_display == '대기 중' %}pending{% endif %}">
+                {{ ppt_status_display }}
+            </p>
+            {% if ppt_request and ppt_request.generated_ppt_file %}
+                <!-- download 속성을 추가하여 파일 다운로드 유도 -->
+                <a href="{{ ppt_request.generated_ppt_file.url }}" class="action-button primary" download>PPT 다운로드</a>
+            {% endif %}
+        </div>
 
-        <a href="{% url 'logout' %}" class="logout-btn">로그아웃</a>
+        <div class="button-group">
+            {% if show_ppt_creation_start_button %}
+                <a href="{% url 'ppt_creation_start' %}" class="action-button primary">PPT 제작 시작</a>
+            {% endif %}
+
+            {% if show_worship_info_input_button %}
+                <a href="{% url 'worship_info_input' %}" class="action-button secondary">예배 정보 입력</a>
+            {% endif %}
+
+            {% if show_song_info_input_button %}
+                <a href="{% url 'song_info_input' %}" class="action-button secondary">찬양 정보 입력</a>
+            {% endif %}
+        </div>
+
+        <!-- 로그아웃 링크를 POST 요청을 보내는 폼으로 변경 -->
+        <form action="{% url 'logout' %}" method="post" class="logout-form">
+            {% csrf_token %}
+            <button type="submit">로그아웃</button>
+        </form>
     </div>
 </body>
 </html>
