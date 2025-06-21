@@ -24,19 +24,15 @@ class WorshipInfo(TimestampedModel):
     주로 예배의 기본적인 정보들을 기록합니다.
     """
     WORSHIP_TYPES = (
-        ('sunday_am', '주일 오전 예배'),
-        ('sunday_pm', '주일 오후 예배'),
-        ('wednesday', '수요 예배'),
-        ('friday', '금요 철야 예배'),
-        ('dawn', '새벽 예배'),
-        ('other', '기타 예배'),
+        ('youth_4th', '4부 예배 (청년 예배)'), # <-- 이 부분을 이렇게 변경합니다.
+        # 나중에 다른 예배 타입을 추가할 때 여기에 항목을 추가하면 됩니다.
     )
 
     worship_date = models.DateField(unique=True, verbose_name="예배 날짜")
     worship_type = models.CharField(
         max_length=20,
         choices=WORSHIP_TYPES,
-        default='sunday_am',
+        default='youth_4th', # <-- default 값도 변경된 타입에 맞춰줍니다.
         verbose_name="예배 종류"
     )
     speaker = models.CharField(max_length=100, blank=True, verbose_name="설교자")
