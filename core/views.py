@@ -1,11 +1,19 @@
 # core/views.py
 
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import AccessMixin # 권한 데코레이터/믹스인을 위한 기본 Mixin
+from django.contrib import messages # 메시지 프레임워크 임포트
 from datetime import date, timedelta
+import json # JSONField 처리를 위해 임포트
+
 from .models import WorshipInfo, SongInfo, PptRequest
-from django.http import HttpResponse # 임시 뷰를 위한 임포트
+from .forms import WorshipInfoForm, SongInfoFormSet # 새로 생성한 폼 임포트
+
+from django.http import HttpResponse
+from django.core.files.storage import default_storage
+
+from django.utils.decorators import method_decorator
 
 # User 모델을 가져오는 표준 방법 (models.py와 동일하게 유지)
 from django.contrib.auth import get_user_model
@@ -89,20 +97,189 @@ def home(request):
 
     return render(request, 'core/home.html', context)
 
-# --- 임시 뷰 함수들 (향후 실제 뷰로 대체될 예정) ---
+# 예배준비팀 권한 체크
+def worship_prep_team_required(function):
+    def wrapper(request, *args, **kwargs):
+        if not is_member_of_group(request.user, '예배준비팀'):
+            messages.error(request, "예배준비팀만 이 페이지에 접근할 수 있습니다.")
+            return redirect('home')
+        return function(request, *args, **kwargs)
+    return wrapper
+
 @login_required
+@worship_prep_team_required
 def worship_info_input_view(request):
-    return HttpResponse("<h2>예배 정보 입력 페이지 (임시)</h2><p>여기는 예배준비팀이 예배 정보를 입력하는 페이지입니다.</p><a href='/'>메인으로</a>")
+    """
+    예배 정보를 입력하거나 수정하는 페이지.
+    예배준비팀만 접근 가능.
+    """
+    # 이번 주 주일 날짜 계산 (home 뷰와 동일)
+    today = date.today()
+    days_until_sunday = (6 - today.weekday() + 7) % 7
+    if today.weekday() == 6:
+        upcoming_sunday = today + timedelta(days=7)
+    else:
+        upcoming_sunday = today + timedelta(days=days_until_sunday)
+
+    worship_info = None
+    initial_data = {'worship_date': upcoming_sunday} # 새 객체 생성 시 초기값
+
+    try:
+        worship_info = WorshipInfo.objects.get(worship_date=upcoming_sunday)
+        # JSONField 데이터를 폼에서 편집하기 위해 Python 객체(리스트/딕셔너리)를 JSON 문자열로 변환
+        if worship_info.worship_announcements:
+            initial_data['worship_announcements'] = json.dumps(worship_info.worship_announcements, indent=2, ensure_ascii=False)
+        else:
+            initial_data['worship_announcements'] = '[]' # 빈 JSON 리스트 기본값
+        
+    except WorshipInfo.DoesNotExist:
+        pass # 객체가 없으면 새로 생성
+
+    if request.method == 'POST':
+        form = WorshipInfoForm(request.POST, instance=worship_info, initial=initial_data)
+        if form.is_valid():
+            worship_info_obj = form.save(commit=False)
+            worship_info_obj.created_by = request.user # 생성자 설정
+            
+            # JSON 필드 처리: 폼에서 문자열로 받은 JSON을 Python 객체로 변환하여 저장
+            if worship_info_obj.worship_announcements:
+                try:
+                    worship_info_obj.worship_announcements = json.loads(request.POST.get('worship_announcements', '[]'))
+                except json.JSONDecodeError:
+                    messages.error(request, "광고 목록 필드에 유효하지 않은 JSON 형식이 입력되었습니다.")
+                    return render(request, 'core/worship_info_form.html', {'form': form})
+            else:
+                worship_info_obj.worship_announcements = [] # 비어있으면 빈 리스트 저장
+
+            worship_info_obj.save()
+            messages.success(request, f"{upcoming_sunday} 예배 정보가 성공적으로 저장되었습니다.")
+
+            # PptRequest가 아직 없으면 생성 (상태는 'no_song_info' 또는 'pending'으로 초기화)
+            ppt_request_obj, created = PptRequest.objects.get_or_create(
+                worship_info=worship_info_obj,
+                defaults={'requested_by': request.user, 'status': 'pending'} # 처음 생성 시 상태
+            )
+            if not created:
+                # 이미 PptRequest가 존재하면 상태를 'no_song_info'가 아닌 'pending'으로 업데이트
+                if ppt_request_obj.status == 'no_worship_info':
+                     ppt_request_obj.status = 'pending'
+                     ppt_request_obj.progress_message = "예배 정보가 입력되었습니다. 찬양 정보 입력을 기다립니다."
+                     ppt_request_obj.save()
+
+            return redirect('home')
+        else:
+            messages.error(request, "예배 정보 저장에 실패했습니다. 입력 양식을 확인해주세요.")
+    else:
+        form = WorshipInfoForm(instance=worship_info, initial=initial_data)
+
+    context = {
+        'form': form,
+        'upcoming_sunday': upcoming_sunday,
+    }
+    return render(request, 'core/worship_info_form.html', context)
+
+
+# 찬양팀 권한 체크
+def praise_team_required(function):
+    def wrapper(request, *args, **kwargs):
+        if not is_member_of_group(request.user, '찬양팀'):
+            messages.error(request, "찬양팀만 이 페이지에 접근할 수 있습니다.")
+            return redirect('home')
+        return function(request, *args, **kwargs)
+    return wrapper
 
 @login_required
+@praise_team_required
 def song_info_input_view(request):
-    return HttpResponse("<h2>찬양 정보 입력 페이지 (임시)</h2><p>여기는 찬양팀이 찬양 정보를 입력하는 페이지입니다.</p><a href='/'>메인으로</a>")
+    """
+    찬양 정보를 입력하거나 수정하는 페이지.
+    찬양팀만 접근 가능.
+    """
+    today = date.today()
+    days_until_sunday = (6 - today.weekday() + 7) % 7
+    if today.weekday() == 6:
+        upcoming_sunday = today + timedelta(days=7)
+    else:
+        upcoming_sunday = today + timedelta(days=days_until_sunday)
 
+    worship_info = None
+    try:
+        worship_info = WorshipInfo.objects.get(worship_date=upcoming_sunday)
+    except WorshipInfo.DoesNotExist:
+        messages.error(request, "해당 주일 예배 정보가 먼저 입력되어야 찬양 정보를 입력할 수 있습니다.")
+        return redirect('home')
+
+    if request.method == 'POST':
+        formset = SongInfoFormSet(request.POST, request.FILES, instance=worship_info)
+        if formset.is_valid():
+            instances = formset.save(commit=False)
+            for instance in instances:
+                if not instance.pk:
+                    instance.created_by = request.user
+                instance.save()
+            
+            # formset.save_m2m() # SongInfo에는 M2M 관계가 없으므로 필요 없음
+            
+            for obj in formset.deleted_objects:
+                obj.delete()
+
+            messages.success(request, f"{upcoming_sunday} 찬양 정보가 성공적으로 저장되었습니다.")
+
+            ppt_request_obj, created = PptRequest.objects.get_or_create(
+                worship_info=worship_info,
+                defaults={'requested_by': request.user, 'status': 'pending'}
+            )
+            if not created:
+                if ppt_request_obj.status == 'no_song_info':
+                    ppt_request_obj.status = 'pending'
+                    ppt_request_obj.progress_message = "찬양 정보가 입력되었습니다. PPT 제작을 시작할 수 있습니다."
+                    ppt_request_obj.save()
+
+            return redirect('home')
+        else:
+            messages.error(request, "찬양 정보 저장에 실패했습니다. 입력 양식을 확인해주세요.")
+    else:
+        formset = SongInfoFormSet(instance=worship_info)
+
+    context = {
+        'formset': formset,
+        'worship_info': worship_info,
+    }
+    return render(request, 'core/song_info_form.html', context)
+
+
+# --- 임시 뷰 함수들 (향후 실제 뷰로 대체되거나 로직 추가 예정) ---
 @login_required
 def ppt_creation_start_view(request):
-    return HttpResponse("<h2>PPT 제작 시작 페이지 (임시)</h2><p>여기는 미디어팀이 PPT 제작을 시작하는 페이지입니다.</p><a href='/'>메인으로</a>")
+    """미디어팀만 접근 가능"""
+    if not is_member_of_group(request.user, '미디어팀'):
+        messages.error(request, "미디어팀만 이 페이지에 접근할 수 있습니다.")
+        return redirect('home')
+    return render(request, 'core/ppt_creation_start.html') # 새로운 템플릿 생성 예정
 
 @login_required
 def ppt_download_view(request, ppt_request_id):
-    # 실제 구현 시에는 FileResponse 등을 사용하여 파일을 다운로드하도록 처리합니다.
-    return HttpResponse(f"<h2>PPT 다운로드 페이지 (임시)</h2><p>PPT 요청 ID: {ppt_request_id} 파일을 다운로드합니다.</p><a href='/'>메인으로</a>")
+    """
+    PPT 다운로드 뷰.
+    이 뷰는 메인 페이지에서 'PPT 다운로드' 버튼 클릭 시 호출됩니다.
+    실제 구현 시 FileResponse 등을 사용하여 파일을 다운로드하도록 처리합니다.
+    """
+    ppt_request = get_object_or_404(PptRequest, id=ppt_request_id)
+    
+    # 보안: 권한이 있는 사용자만 다운로드 가능하도록 추후 로직 추가 필요
+    # 예: if not is_member_of_group(request.user, '미디어팀'): ...
+    
+    if ppt_request.generated_ppt_file:
+        # 실제 파일 다운로드 로직 (간단한 예시, 실제 배포 시에는 더 견고하게)
+        file_path = ppt_request.generated_ppt_file.path
+        if default_storage.exists(file_path):
+            with default_storage.open(file_path, 'rb') as pdf:
+                response = HttpResponse(pdf.read(), content_type='application/vnd.openxmlformats-officedocument.presentationml.presentation')
+                response['Content-Disposition'] = f'attachment; filename="{ppt_request.generated_ppt_file.name}"'
+                return response
+        else:
+            messages.error(request, "생성된 PPT 파일이 존재하지 않습니다.")
+    else:
+        messages.error(request, "다운로드할 PPT 파일이 없습니다.")
+    
+    return redirect('home') # 파일 없거나 오류 시 메인 페이지로 리다이렉트

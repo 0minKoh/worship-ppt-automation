@@ -1,0 +1,173 @@
+<!-- templates/core/song_info_form.html -->
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>찬양 정보 입력</title>
+    <style>
+        body { font-family: 'Inter', sans-serif; display: flex; justify-content: center; align-items: flex-start; min-height: 100vh; background-color: #f0f2f5; margin: 0; padding: 20px; box-sizing: border-box; }
+        .form-container { background-color: #ffffff; padding: 40px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1); width: 100%; max-width: 800px; text-align: left; box-sizing: border-box; color: #333; margin-top: 30px; margin-bottom: 30px;}
+        h2 { color: #2c3e50; margin-bottom: 25px; text-align: center; font-size: 2em; }
+        h3 { color: #34495e; margin-top: 30px; margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+        .formset-row { border: 1px solid #e0e0e0; border-radius: 8px; padding: 20px; margin-bottom: 20px; background-color: #fcfcfc; position: relative;}
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 6px; font-weight: bold; color: #555; }
+        .form-input, .form-select, .form-textarea { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; font-size: 0.95em; transition: border-color 0.3s ease; }
+        .form-input:focus, .form-select:focus, .form-textarea:focus { border-color: #007bff; outline: none; }
+        .form-checkbox { margin-top: 5px; }
+        .button-group { text-align: center; margin-top: 30px; }
+        .submit-button, .add-form-button, .delete-form-button { background-color: #28a745; color: white; padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-size: 1em; transition: background-color 0.3s ease; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .submit-button:hover, .add-form-button:hover { background-color: #218838; }
+        .add-form-button { background-color: #007bff; margin-left: 10px; }
+        .add-form-button:hover { background-color: #0056b3; }
+        .delete-form-button { position: absolute; top: 15px; right: 15px; background-color: #dc3545; padding: 8px 12px; font-size: 0.9em; }
+        .delete-form-button:hover { background-color: #c82333; }
+        .errorlist { color: #dc3545; list-style-type: none; padding: 0; margin-top: 5px; margin-bottom: 10px; font-size: 0.9em; }
+        .errorlist li { margin-bottom: 3px; }
+        .messages { list-style-type: none; padding: 0; margin-bottom: 20px; text-align: center; }
+        .messages li { padding: 10px; border-radius: 5px; margin-bottom: 10px; }
+        .messages .success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .messages .error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .back-link { display: block; text-align: center; margin-top: 20px; color: #007bff; text-decoration: none; font-weight: bold; }
+        .back-link:hover { text-decoration: underline; }
+
+        /* Hidden template for adding new forms */
+        #empty-form { display: none; }
+    </style>
+</head>
+<body>
+    <div class="form-container">
+        <h2>{{ worship_info.worship_date }} 찬양 정보 {% if formset.instance.pk %}수정{% else %}입력{% endif %}</h2>
+        <p style="text-align: center; color: #666; margin-bottom: 30px;">
+            연결된 예배: <strong>{{ worship_info.worship_date }} ({{ worship_info.get_worship_type_display }})</strong>
+        </p>
+
+        {% if messages %}
+            <ul class="messages">
+                {% for message in messages %}
+                    <li {% if message.tags %} class="{{ message.tags }}"{% endif %}>{{ message }}</li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+
+        <form method="post">
+            {% csrf_token %}
+            {{ formset.management_form }} {# 폼셋 관리에 필요한 숨겨진 필드 #}
+
+            <div id="form-list">
+                {% for form in formset %}
+                    <div class="formset-row">
+                        {% if form.instance.pk %}{# 기존 폼일 경우 삭제 체크박스 #}
+                            <button type="button" class="delete-form-button" data-form-id="{{ form.prefix }}-DELETE">삭제</button>
+                        {% endif %}
+                        {% for field in form %}
+                            <div class="form-group">
+                                {{ field.label_tag }}
+                                {{ field }}
+                                {% if field.help_text %}
+                                    <small>{{ field.help_text }}</small>
+                                {% endif %}
+                                {% if field.errors %}
+                                    <ul class="errorlist">
+                                        {% for error in field.errors %}
+                                            <li>{{ error }}</li>
+                                        {% endfor %}
+                                    </ul>
+                                {% endif %}
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endfor %}
+            </div>
+
+            <div class="button-group">
+                <button type="submit" class="submit-button">저장</button>
+                <button type="button" class="add-form-button">찬양 추가</button>
+            </div>
+        </form>
+
+        <a href="{% url 'home' %}" class="back-link">메인 대시보드로 돌아가기</a>
+    </div>
+
+    {# 새 폼을 동적으로 추가하기 위한 숨겨진 템플릿 #}
+    <div id="empty-form" style="display: none;">
+        <div class="formset-row">
+            <button type="button" class="delete-form-button">삭제</button>
+            {% for field in formset.empty_form %}
+                <div class="form-group">
+                    {{ field.label_tag }}
+                    {{ field }}
+                    {% if field.help_text %}
+                        <small>{{ field.help_text }}</small>
+                    {% endif %}
+                    {% if field.errors %}
+                        <ul class="errorlist">
+                            {% for error in field.errors %}
+                                <li>{{ error }}</li>
+                            {% endfor %}
+                        </ul>
+                    {% endif %}
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const addButton = document.querySelector('.add-form-button');
+            const formList = document.getElementById('form-list');
+            const emptyFormTemplate = document.getElementById('empty-form');
+            const totalFormsInput = document.querySelector('input[name="{{ formset.management_form.prefix }}-TOTAL_FORMS"]');
+
+            // 삭제 버튼 이벤트 리스너 추가 함수
+            function addDeleteButtonListener(button) {
+                button.addEventListener('click', function() {
+                    const row = button.closest('.formset-row');
+                    if (row) {
+                        // 기존 폼의 경우 HIDDEN DELETE 필드를 체크
+                        const deleteInputId = button.dataset.formId;
+                        if (deleteInputId) {
+                            const deleteInput = document.getElementById(deleteInputId);
+                            if (deleteInput) {
+                                deleteInput.checked = true;
+                                row.style.display = 'none'; // 폼을 시각적으로 숨김
+                            }
+                        } else { // 새로 추가된 폼의 경우 DOM에서 직접 제거
+                            row.remove();
+                        }
+                        // 폼셋의 TOTAL_FORMS 값은 유지하고, INITIAL_FORMS와 MIN_NUM_FORMS를 고려하여 재설정 필요 (복잡해질 수 있음)
+                        // 여기서는 간단하게 HIDDEN DELETE 필드만 사용하고, 새로 추가된 폼은 직접 제거하는 방식으로 처리
+                        // 실제 Django 폼셋은 TOTAL_FORMS, INITIAL_FORMS, MIN_NUM_FORMS, MAX_NUM_FORMS를 정확히 맞춰줘야 합니다.
+                        // 지금은 복잡성을 줄이기 위해 간단한 방식으로 진행합니다.
+                    }
+                });
+            }
+
+            // 기존 폼들의 삭제 버튼에 이벤트 리스너 추가
+            document.querySelectorAll('.delete-form-button').forEach(button => {
+                addDeleteButtonListener(button);
+            });
+
+            // 새 폼 추가 버튼 클릭 이벤트
+            addButton.addEventListener('click', function() {
+                const newForm = emptyFormTemplate.firstElementChild.cloneNode(true);
+                const currentTotalForms = parseInt(totalFormsInput.value);
+
+                // 새 폼의 필드 이름 업데이트 (prefix 변경)
+                newForm.innerHTML = newForm.innerHTML.replace(/__prefix__/g, currentTotalForms);
+
+                // 삭제 버튼의 data-form-id 제거 (새 폼은 HIDDEN DELETE 필드 대신 직접 삭제)
+                const deleteButton = newForm.querySelector('.delete-form-button');
+                if (deleteButton) {
+                    deleteButton.removeAttribute('data-form-id');
+                    addDeleteButtonListener(deleteButton); // 새 삭제 버튼에도 리스너 추가
+                }
+
+                formList.appendChild(newForm);
+                totalFormsInput.value = currentTotalForms + 1; // TOTAL_FORMS 업데이트
+            });
+        });
+    </script>
+</body>
+</html>
