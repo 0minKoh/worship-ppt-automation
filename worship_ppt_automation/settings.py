@@ -1,9 +1,13 @@
 from pathlib import Path
-import os # os 모듈 임포트
+import os
+
+from dotenv import load_dotenv # os 모듈 임포트
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+load_dotenv(os.path.join(BASE_DIR, '.env'))
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
