@@ -9,8 +9,6 @@ from django.conf import settings # Django settings에 접근하여 BASE_DIR 가�
 BIBLE_TEXT_DIR = os.path.join(settings.BASE_DIR, 'core', 'data', 'bible_text')
 
 # 성경책 전체 이름과 파일 이름 매핑
-# 이 매핑은 당신이 가진 성경 TXT 파일의 이름과 정확히 일치해야 합니다.
-# 예시이며, 실제 모든 66권에 대해 채워주셔야 합니다.
 BIBLE_FILE_MAP = {
     "창세기": "1-01창세기.txt",
     "출애굽기": "1-02출애굽기.txt",
@@ -119,7 +117,7 @@ def get_bible_contents(bible_book: str, begin_ch: int, begin_verse: int, end_ch:
     
     file_path = os.path.join(BIBLE_TEXT_DIR, bible_file_name)
     if not os.path.exists(file_path):
-        raise FileNotFoundError(f"성경 파일 '{file_path}'를 찾을 수 없습니다. 'core/data/bible_text/' 폴더에 파일이 있고 이름이 정확한지 확인해주세요.")
+        raise FileNotFoundError(f"성경 파일 '{file_path}'에 대한 성경 파일을 찾을 수 없습니다. 'core/data/bible_text/' 폴더에 파일이 있고 이름이 정확한지 확인해주세요.")
 
     verses = []
     is_in_range = False # 구절 범위 시작 플래그

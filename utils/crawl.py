@@ -19,9 +19,6 @@ def crawl_lyrics(url: str) -> str:
 
         soup = BeautifulSoup(response.text, 'html.parser')
 
-        # 가사를 찾기 위한 일반적인 CSS 선택자 또는 태그 조합 (예시)
-        # 실제 웹사이트마다 가사 엘리먼트의 id, class, 태그 구조가 다릅니다.
-        # 따라서 이 부분은 실제 크롤링 대상 웹사이트의 HTML 구조를 분석하여 수정해야 합니다.
         lyrics: str = soup.select_one('div.lyricsContainer xmp').get_text()
         return lyrics
 
