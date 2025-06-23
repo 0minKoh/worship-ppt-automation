@@ -7,9 +7,11 @@ import re # 정규표현식 모듈 임포트
 def crawl_lyrics(url: str) -> str:
     """
     주어진 URL에서 찬양 가사를 크롤링합니다.
-    이 함수는 실제 웹사이트 구조에 따라 변경될 수 있습니다.
-    여기서는 멜론/벅스 뮤직 같은 일반적인 가사 페이지를 가정합니다.
+    현재는 Bugs (벅스) 사이트에서 가사를 크롤링하도록 구현되어 있습니다.
     """
+    # URL이 벅스 사이트인지 확인
+    if not url.startswith("https://music.bugs.co.kr/"):
+        raise ValueError("현재는 벅스 사이트에서만 가사를 크롤링할 수 있습니다. URL을 확인해주세요.")
     try:
         headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
