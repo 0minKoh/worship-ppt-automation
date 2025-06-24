@@ -25,3 +25,6 @@ Thumbs.db
 .celery/
 dump.rdb
 appendonly.aof
+
+# Temporary Test Folder
+test_temp_pptx_project/
