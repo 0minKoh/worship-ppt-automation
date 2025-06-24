@@ -35,15 +35,15 @@ class WorshipInfo(TimestampedModel):
         default='youth_4th', # <-- default 값도 변경된 타입에 맞춰줍니다.
         verbose_name="예배 종류"
     )
-    speaker = models.CharField(max_length=100, blank=True, verbose_name="설교자")
-    sermon_title = models.CharField(max_length=200, blank=True, verbose_name="설교 제목")
-    sermon_scripture = models.CharField(max_length=255, blank=True, verbose_name="설교 본문 범위") # 이름 변경
+    speaker = models.CharField(max_length=100, blank=False, verbose_name="설교자")
+    sermon_title = models.CharField(max_length=200, blank=False, verbose_name="설교 제목")
+    sermon_scripture = models.CharField(max_length=255, blank=False, verbose_name="설교 본문 범위") # 이름 변경
 
-    prayer_minister = models.CharField(max_length=100, blank=True, verbose_name="기도자")
-    offering_minister = models.CharField(max_length=100, blank=True, verbose_name="봉헌자")
-    ads_manager = models.CharField(max_length=100, blank=True, verbose_name="광고 담당자") # 광고 책임자명
-    benediction_minister = models.CharField(max_length=100, blank=True, verbose_name="축도자") # 축도자명
-    worship_announcements = models.JSONField(default=list, blank=True, verbose_name="광고 목록") # 구조화된 광고 내용
+    prayer_minister = models.CharField(max_length=100, blank=False, verbose_name="기도자")
+    offering_minister = models.CharField(max_length=100, blank=False, verbose_name="봉헌자")
+    ads_manager = models.CharField(max_length=100, blank=False, verbose_name="광고 담당자") # 광고 책임자명
+    benediction_minister = models.CharField(max_length=100, blank=False, verbose_name="축도자") # 축도자명
+    worship_announcements = models.JSONField(default=list, blank=False, verbose_name="광고 목록") # 구조화된 광고 내용
     main_prayer_topic = models.TextField(blank=True, verbose_name="예배 기도 제목")
 
     notes = models.TextField(blank=True, verbose_name="추가 비고")

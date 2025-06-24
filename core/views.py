@@ -9,7 +9,7 @@ from datetime import date, timedelta
 import json # JSONField 처리를 위해 임포트
 
 from .models import WorshipInfo, SongInfo, PptRequest
-from .forms import WorshipInfoForm, SongInfoFormSet # 새로 생성한 폼 임포트
+from .forms import WorshipInfoForm, SongInfoFormSet
 
 from django.http import HttpResponse
 from django.core.files.storage import default_storage
@@ -142,7 +142,7 @@ def worship_info_input_view(request):
         worship_info = WorshipInfo.objects.get(worship_date=upcoming_sunday)
         # JSONField 데이터를 폼에서 편집하기 위해 Python 객체(리스트/딕셔너리)를 JSON 문자열로 변환
         if worship_info.worship_announcements:
-            initial_data['worship_announcements'] = json.dumps(worship_info.worship_announcements, indent=2, ensure_ascii=False)
+            initial_data['worship_announcements'] = worship_info.worship_announcements
         else:
             initial_data['worship_announcements'] = '[]' # 빈 JSON 리스트 기본값
         
@@ -154,16 +154,6 @@ def worship_info_input_view(request):
         if form.is_valid():
             worship_info_obj = form.save(commit=False)
             worship_info_obj.created_by = request.user # 생성자 설정
-            
-            # JSON 필드 처리: 폼에서 문자열로 받은 JSON을 Python 객체로 변환하여 저장
-            if worship_info_obj.worship_announcements:
-                try:
-                    worship_info_obj.worship_announcements = json.loads(request.POST.get('worship_announcements', '[]'))
-                except json.JSONDecodeError:
-                    messages.error(request, "광고 목록 필드에 유효하지 않은 JSON 형식이 입력되었습니다.")
-                    return render(request, 'core/worship_info_form.html', {'form': form})
-            else:
-                worship_info_obj.worship_announcements = [] # 비어있으면 빈 리스트 저장
 
             worship_info_obj.save()
             messages.success(request, f"{upcoming_sunday} 예배 정보가 성공적으로 저장되었습니다.")

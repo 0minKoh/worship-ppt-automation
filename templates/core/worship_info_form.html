@@ -6,26 +6,161 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>예배 정보 입력</title>
     <style>
-        body { font-family: 'Inter', sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; background-color: #f0f2f5; margin: 0; padding: 20px; box-sizing: border-box; }
-        .form-container { background-color: #ffffff; padding: 40px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1); width: 100%; max-width: 700px; text-align: left; box-sizing: border-box; color: #333; }
-        h2 { color: #2c3e50; margin-bottom: 25px; text-align: center; font-size: 2em; }
-        .form-group { margin-bottom: 20px; }
-        label { display: block; margin-bottom: 8px; font-weight: bold; color: #555; }
-        .form-input, .form-select, .form-textarea { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 1em; transition: border-color 0.3s ease; }
-        .form-input:focus, .form-select:focus, .form-textarea:focus { border-color: #007bff; outline: none; }
-        .form-textarea { resize: vertical; min-height: 100px; }
-        .form-checkbox { margin-top: 5px; }
-        .button-group { text-align: center; margin-top: 30px; }
-        .submit-button { background-color: #28a745; color: white; padding: 12px 30px; border: none; border-radius: 8px; cursor: pointer; font-size: 1.1em; transition: background-color 0.3s ease; box-shadow: 0 4px 8px rgba(0,0,0,0.2); }
-        .submit-button:hover { background-color: #218838; }
-        .errorlist { color: #dc3545; list-style-type: none; padding: 0; margin-top: 10px; margin-bottom: 20px; }
-        .errorlist li { margin-bottom: 5px; }
-        .messages { list-style-type: none; padding: 0; margin-bottom: 20px; text-align: center; }
-        .messages li { padding: 10px; border-radius: 5px; margin-bottom: 10px; }
-        .messages .success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
-        .messages .error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
-        .back-link { display: block; text-align: center; margin-top: 20px; color: #007bff; text-decoration: none; font-weight: bold; }
-        .back-link:hover { text-decoration: underline; }
+        body { /* Body styling */
+            font-family: 'Inter', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+            background-color: #f0f2f5;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        .form-container { /* Main form container */
+            background-color: #ffffff;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 800px;
+            text-align: left;
+            box-sizing: border-box;
+            color: #333;
+            margin-top: 30px;
+            margin-bottom: 30px;
+        }
+        h2 { /* Page title */
+            color: #2c3e50;
+            margin-bottom: 25px;
+            text-align: center;
+            font-size: 2em;
+        }
+        h3 { /* Section title */
+            color: #34495e;
+            margin-top: 30px;
+            margin-bottom: 15px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+        }
+        .form-group { /* Individual form field group */
+            margin-bottom: 15px;
+        }
+        label { /* Field label */
+            display: block;
+            margin-bottom: 6px;
+            font-weight: bold;
+            color: #555;
+        }
+        .form-input, .form-select, .form-textarea { /* Form input styles */
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            box-sizing: border-box;
+            font-size: 0.95em;
+            transition: border-color 0.3s ease;
+        }
+        .form-input:focus, .form-select:focus, .form-textarea:focus { /* Focus state */
+            border-color: #007bff;
+            outline: none;
+        }
+        .form-checkbox { /* Checkbox style */
+            margin-top: 5px;
+        }
+        .button-group { /* Group of buttons */
+            text-align: center;
+            margin-top: 30px;
+        }
+        .submit-button, .add-form-button, .delete-form-button { /* Button base styles */
+            background-color: #28a745; /* Green */
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: background-color 0.3s ease, box-shadow 0.2s ease;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .submit-button:hover, .add-form-button:hover {
+            background-color: #218838; /* Darker green */
+        }
+        .delete-announcement-button { /* Delete button specific style */
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background-color: #dc3545; /* Red */
+            padding: 8px 12px;
+            font-size: 0.9em;
+            border-radius: 5px;
+        }
+        .delete-announcement-button:hover {
+            background-color: #c82333; /* Darker red */
+        }
+        .errorlist { /* Error message list */
+            color: #dc3545;
+            list-style-type: none;
+            padding: 0;
+            margin-top: 5px;
+            margin-bottom: 10px;
+            font-size: 0.9em;
+        }
+        .errorlist li {
+            margin-bottom: 3px;
+        }
+        .messages { /* Django messages styling */
+            list-style-type: none;
+            padding: 0;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .messages li {
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 10px;
+        }
+        .messages .success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .messages .error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .back-link { /* Back to dashboard link */
+            display: block;
+            text-align: center;
+            margin-top: 20px;
+            color: #007bff;
+            text-decoration: none;
+            font-weight: bold;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        
+        /* Hidden JSON field */
+        .announcements-json-field {
+            display: none !important; /* IMPORTANT: This field is hidden */
+        }
+        /* Dynamic announcement item styling */
+        .announcement-item {
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            background-color: #fcfcfc;
+            position: relative;
+        }
+        label[for="id_worship_announcements"] {
+            display: none !important;
+        }
+        .announcement-item.hidden { /* Hides deleted items */
+            display: none;
+        }
     </style>
 </head>
 <body>
@@ -40,29 +175,161 @@
             </ul>
         {% endif %}
 
-        <form method="post">
+        <form method="post" id="worship-info-form">
             {% csrf_token %}
+            
+            <h3>기본 예배 정보</h3>
+            {# Render all form fields except 'worship_announcements' here #}
             {% for field in form %}
-                <div class="form-group">
-                    {{ field.label_tag }}
-                    {{ field }}
-                    {% if field.help_text %}
-                        <small class="form-text text-muted">{{ field.help_text }}</small>
-                    {% endif %}
-                    {% if field.errors %}
-                        <ul class="errorlist">
-                            {% for error in field.errors %}
-                                <li>{{ error }}</li>
-                            {% endfor %}
-                        </ul>
-                    {% endif %}
-                </div>
+                {% if field.name != 'worship_announcements' %}
+                    <div class="form-group">
+                        {{ field.label_tag }}
+                        {{ field }}
+                        {% if field.help_text %}
+                            <small class="form-text text-muted">{{ field.help_text }}</small>
+                        {% endif %}
+                        {% if field.errors %}
+                            <ul class="errorlist">
+                                {% for error in field.errors %}
+                                    <li>{{ error }}</li>
+                                {% endfor %}
+                            </ul>
+                        {% endif %}
+                    </div>
+                {% endif %}
             {% endfor %}
+
+            <h3>광고 목록</h3>
+            <div id="announcements-dynamic-fields">
+                {# Existing announcement data will be dynamically loaded here by JavaScript #}
+            </div>
+            <button type="button" class="add-announcement-button">광고 추가</button>
+            
+            {# Hidden actual JSON field #}
+            <div class="form-group">
+                {{ form.worship_announcements.label_tag }}
+                {{ form.worship_announcements }} {# This field is hidden by CSS #}
+                {% if form.worship_announcements.help_text %}
+                    <small class="form-text text-muted">{{ form.worship_announcements.help_text }}</small>
+                {% endif %}
+                {% if form.worship_announcements.errors %}
+                    <ul class="errorlist">
+                        {% for error in form.worship_announcements.errors %}
+                            <li>{{ error }}</li>
+                        {% endfor %}
+                    </ul>
+                {% endif %}
+            </div>
+
             <div class="button-group">
                 <button type="submit" class="submit-button">저장</button>
             </div>
         </form>
+
         <a href="{% url 'home' %}" class="back-link">메인 대시보드로 돌아가기</a>
     </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const form = document.getElementById('worship-info-form');
+            const announcementsJsonField = document.querySelector('.announcements-json-field'); // The hidden Textarea
+            const dynamicFieldsContainer = document.getElementById('announcements-dynamic-fields');
+            const addAnnouncementButton = document.querySelector('.add-announcement-button');
+            
+            let announcementCounter = 0; // Counter for unique IDs of dynamic fields
+
+            // Function to create HTML for an announcement item using template strings
+            function createAnnouncementItemHtml(index, title = '', contents = '') {
+                return `
+                    <div class="announcement-item" data-index="${index}">
+                        <button type="button" class="delete-announcement-button">삭제</button>
+                        <div class="form-group">
+                            <label for="announcement-${index}-title">광고 제목:</label>
+                            <input type="text" id="announcement-${index}-title" name="announcement-${index}-title" class="form-input" value="${escapeHtml(title)}" placeholder="예: 금요 응답의 밤 특송">
+                        </div>
+                        <div class="form-group">
+                            <label for="announcement-${index}-contents">광고 내용:</label>
+                            <textarea id="announcement-${index}-contents" name="announcement-${index}-contents" rows="3" class="form-textarea" placeholder="예: 돌아오는 금요일 오후 8시, 에벤에셀 홀에서 모여 연습합니다!">${escapeHtml(contents)}</textarea>
+                        </div>
+                    </div>
+                `;
+            }
+
+            // HTML escape function (to prevent XSS)
+            function escapeHtml(text) {
+                const map = {
+                    '&': '&amp;',
+                    '<': '&lt;',
+                    '>': '&gt;',
+                    '"': '&quot;',
+                    "'": '&#039;'
+                };
+                return text.replace(/[&<>"']/g, function(m) { return map[m]; });
+            }
+
+            // Function to add a new announcement item to the DOM
+            function addAnnouncementItem(title = '', contents = '') {
+                const html = createAnnouncementItemHtml(announcementCounter, title, contents);
+                dynamicFieldsContainer.insertAdjacentHTML('beforeend', html); // Appends as the last child
+
+                // Attach event listener to the newly added delete button
+                const newDeleteButton = dynamicFieldsContainer.lastElementChild.querySelector('.delete-announcement-button');
+                newDeleteButton.addEventListener('click', function() {
+                    newDeleteButton.closest('.announcement-item').classList.add('hidden'); // Simply hides the item
+                });
+
+                announcementCounter++;
+            }
+
+            addAnnouncementItem(); // Add the first empty announcement item
+
+            // Load existing announcement data when the page loads
+            const existingAnnouncementsJson = announcementsJsonField.value;
+            if (existingAnnouncementsJson) {
+                try {
+                    const existingAnnouncements = JSON.parse(existingAnnouncementsJson);
+                    if (Array.isArray(existingAnnouncements)) {
+                        existingAnnouncements.forEach(ad => {
+                            addAnnouncementItem(ad.title || '', ad.contents || '');
+                        });
+                    }
+                } catch (e) {
+                    console.error("Error parsing existing announcements JSON:", e);
+                    // Optionally display an error message to the user
+                }
+            }
+
+            // '+' button click event
+            addAnnouncementButton.addEventListener('click', function() {
+                addAnnouncementItem(); // Add a new empty announcement item
+            });
+
+            // Serialize dynamic fields to JSON when the form is submitted
+            form.addEventListener('submit', function(event) {
+                const announcementsData = [];
+                // Iterate over all dynamic announcement items (including hidden ones)
+                document.querySelectorAll('.announcement-item').forEach(item => {
+                    // Only process items that are not hidden (i.e., not marked for deletion)
+                    if (!item.classList.contains('hidden')) {
+                        const titleInput = item.querySelector('input[type="text"]');
+                        const contentsTextarea = item.querySelector('textarea');
+                        
+                        if (titleInput && contentsTextarea) {
+                            // Add to data only if either title or contents has a non-empty value
+                            if (titleInput.value.trim() !== '' || contentsTextarea.value.trim() !== '') {
+                                announcementsData.push({
+                                    title: titleInput.value.trim(),
+                                    contents: contentsTextarea.value.trim()
+                                });
+                            }
+                        }
+                    }
+                });
+                
+                // Assign the serialized JSON string to the hidden Textarea's value
+                announcementsJsonField.value = JSON.stringify(announcementsData);
+            });
+        });
+    </script>
 </body>
 </html>
