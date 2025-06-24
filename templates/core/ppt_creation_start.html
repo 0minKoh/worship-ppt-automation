@@ -1,0 +1,83 @@
+<!-- templates/core/ppt_creation_start.html -->
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PPT 제작 시작</title>
+    <style>
+        body { font-family: 'Inter', sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; background-color: #f0f2f5; margin: 0; padding: 20px; box-sizing: border-box; }
+        .container { background-color: #ffffff; padding: 40px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1); width: 100%; max-width: 600px; text-align: center; box-sizing: border-box; color: #333; }
+        h2 { color: #2c3e50; margin-bottom: 25px; font-size: 2em; }
+        p { margin-bottom: 15px; font-size: 1.1em; color: #555; }
+        .details { background-color: #e3f2fd; border: 1px solid #bbdefb; padding: 20px; border-radius: 8px; margin-bottom: 30px; text-align: left;}
+        .details strong { color: #1976d2; }
+        .button-group { margin-top: 30px; }
+        .start-button { background-color: #28a745; color: white; padding: 15px 35px; border: none; border-radius: 8px; cursor: pointer; font-size: 1.2em; transition: background-color 0.3s ease; box-shadow: 0 4px 8px rgba(0,0,0,0.2); }
+        .start-button:hover { background-color: #218838; }
+        .back-link { display: block; text-align: center; margin-top: 20px; color: #007bff; text-decoration: none; font-weight: bold; }
+        .back-link:hover { text-decoration: underline; }
+        .messages { list-style-type: none; padding: 0; margin-bottom: 20px; text-align: center; }
+        .messages li { padding: 10px; border-radius: 5px; margin-bottom: 10px; }
+        .messages .success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .messages .error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>PPT 제작 시작</h2>
+
+        {% if messages %}
+            <ul class="messages">
+                {% for message in messages %}
+                    <li {% if message.tags %} class="{{ message.tags }}"{% endif %}>{{ message }}</li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+
+        {% if worship_info %}
+            <p>{{ upcoming_sunday }} 주일 예배 PPT 제작을 시작하시겠습니까?</p>
+            <div class="details">
+                <p><strong>예배 날짜:</strong> {{ worship_info.worship_date }}</p>
+                <p><strong>예배 종류:</strong> {{ worship_info.get_worship_type_display }}</p>
+                <p><strong>설교자:</strong> {{ worship_info.speaker }}</p>
+                <p><strong>설교 제목:</strong> {{ worship_info.sermon_title }}</p>
+                <p><strong>설교 본문:</strong> {{ worship_info.sermon_scripture }}</p>
+                <p><strong>기도자:</strong> {{ worship_info.prayer_minister }}</p>
+                <p><strong>봉헌자:</strong> {{ worship_info.offering_minister }}</p>
+                <p><strong>광고 담당자:</strong> {{ worship_info.ads_manager }}</p>
+                <p><strong>주요 기도 제목:</strong> {{ worship_info.main_prayer_topic }}</p>
+                <p><strong>광고 목록:</strong>
+                    {% if worship_info.worship_announcements %}
+                        <ul style="margin-left: 20px; list-style-type: disc;">
+                            {% for ad in worship_info.worship_announcements %}
+                                <li><strong>{{ ad.title }}:</strong> {{ ad.contents }}</li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        없음
+                    {% endif %}
+                </p>
+                
+                {% comment %}
+                찬양 정보도 여기에 보여줄 수 있습니다.
+                {% for song in worship_info.song_infos.all %}
+                    <p><strong>찬양 {{ song.order }}{% if song.is_ending_song %} (결단){% endif %}:</strong> {{ song.title }}</p>
+                {% endfor %}
+                {% endcomment %}
+            </div>
+
+            <form action="{% url 'ppt_creation_start' %}" method="post">
+                {% csrf_token %}
+                <div class="button-group">
+                    <button type="submit" class="start-button">제작 시작하기</button>
+                </div>
+            </form>
+        {% else %}
+            <p>현재 주일 예배 정보가 없습니다. 관리자에게 문의하거나 예배 정보를 입력해주세요.</p>
+        {% endif %}
+
+        <a href="{% url 'home' %}" class="back-link">메인 대시보드로 돌아가기</a>
+    </div>
+</body>
+</html>
