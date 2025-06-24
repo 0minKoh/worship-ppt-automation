@@ -1,24 +1,27 @@
 from pathlib import Path
 import os
-
-from dotenv import load_dotenv # os 모듈 임포트
+from dotenv import load_dotenv # dotenv 임포트
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# .env 파일 로드: 프로젝트 루트 디렉토리에 있는 .env 파일을 찾습니다.
+# load_dotenv() 함수는 기본적으로 .env 파일을 찾지만, 명시적으로 경로를 지정해주는 것이 좋습니다.
 load_dotenv(os.path.join(BASE_DIR, '.env'))
-GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = "django-insecure-2c%)e9ld6awm!om7)k=y1))@q2%ywbffsqi^0g%2#5e80(sgsw"
+# SECRET_KEY
+# 환경 변수가 설정되지 않은 경우를 대비하여 기본값을 지정하거나 오류를 발생시킬 수 있습니다.
+# 프로덕션에서는 반드시 환경 변수로 설정해야 합니다.
+SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "django-insecure-fallback-secret-key-for-dev")
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+# DEBUG 모드
+# 문자열 'True'/'False'를 부울 값으로 변환합니다. 기본값은 False로 안전하게 설정.
+DEBUG = os.environ.get("DJANGO_DEBUG", "False").lower() == 'true'
 
-ALLOWED_HOSTS = []
+# ALLOWED_HOSTS
+# 쉼표로 구분된 문자열을 리스트로 변환합니다.
+ALLOWED_HOSTS = os.environ.get("DJANGO_ALLOWED_HOSTS", "").split(',') if os.environ.get("DJANGO_ALLOWED_HOSTS") else []
 
 
 # Application definition
@@ -65,12 +68,15 @@ WSGI_APPLICATION = "worship_ppt_automation.wsgi.application"
 
 
 # Database
-# https://docs.djangoproject.com/en/5.2/ref/settings/#databases
-
+# PostgreSQL 설정을 환경 변수에서 가져옵니다.
 DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql_psycopg2',
+        'NAME': os.environ.get("DB_NAME", "worship_ppt_db"),
+        'USER': os.environ.get("DB_USER", "worship_ppt_app_user"),
+        'PASSWORD': os.environ.get("DB_PASSWORD", "your_secure_password_for_worship_app"),
+        'HOST': os.environ.get("DB_HOST", "localhost"),
+        'PORT': os.environ.get("DB_PORT", "5432"),
     }
 }
 
@@ -97,35 +103,21 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/5.2/topics/i18n/
 
-LANGUAGE_CODE = "en-us"
-
-TIME_ZONE = "UTC"
+LANGUAGE_CODE = "ko-kr" # 한국어 설정
+TIME_ZONE = "Asia/Seoul" # 한국 시간대 설정
 
 USE_I18N = True
-
 USE_TZ = True
 
 
-# Database
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql_psycopg2',
-        'NAME': 'worship_ppt_db',        # 생성할 데이터베이스 이름
-        'USER': 'worship_ppt_app_user',          # PostgreSQL 사용자 이름 (예: postgres)
-        'PASSWORD': 'worship_app_ymkoh',  # PostgreSQL 사용자 비밀번호
-        'HOST': 'localhost',             # 데이터베이스 호스트 (로컬이면 localhost)
-        'PORT': '5432',                  # PostgreSQL 포트
-    }
-}
-
 # Celery Configuration
-CELERY_BROKER_URL = 'redis://localhost:6379/0'  # Redis 서버 주소 (로컬)
-CELERY_RESULT_BACKEND = 'django-db'             # Celery 작업 결과를 Django DB에 저장
-CELERY_ACCEPT_CONTENT = ['json']                # JSON 형식의 콘텐츠만 허용
-CELERY_TASK_SERIALIZER = 'json'                 # 태스크 직렬화 방식
-CELERY_RESULT_SERIALIZER = 'json'               # 결과 직렬화 방식
-CELERY_TIMEZONE = 'Asia/Seoul'                  # 시간대 설정 (필요에 따라 변경)
-CELERY_TASK_TRACK_STARTED = True                # 태스크가 시작되었을 때 상태 추적
+CELERY_BROKER_URL = os.environ.get("CELERY_BROKER_URL", "redis://localhost:6379/0")
+CELERY_RESULT_BACKEND = 'django-db'
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_TIMEZONE = 'Asia/Seoul' # Celery 시간대도 일관성 있게 설정
+CELERY_TASK_TRACK_STARTED = True
 
 
 # Static files (CSS, JavaScript, Images)
@@ -134,7 +126,6 @@ CELERY_TASK_TRACK_STARTED = True                # 태스크가 시작되었을 �
 STATIC_URL = "static/"
 
 # Media files (User-uploaded files)
-## FileField, ImageField 등에서 사용되는 파일 저장 경로 설정
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
@@ -149,3 +140,7 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 LOGIN_REDIRECT_URL = '/'
 LOGIN_URL = '/accounts/login/'
 LOGOUT_REDIRECT_URL = '/accounts/login/'
+
+# Gemini API Key (이미 os.environ.get으로 잘 되어 있습니다)
+# utils/llm.py에서 settings.GEMINI_API_KEY를 참조합니다.
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY") # 실제 키는 .env 파일에
