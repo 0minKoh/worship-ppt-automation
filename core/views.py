@@ -29,6 +29,13 @@ def is_member_of_group(user, group_name):
     """주어진 사용자가 특정 그룹의 멤버인지 확인합니다."""
     return user.groups.filter(name=group_name).exists()
 
+# 미디어팀 / 슈퍼유저 권한 체크
+def is_media_team_or_superuser(user) -> bool:
+    """
+    사용자가 미디어팀의 멤버이거나 슈퍼유저인지 확인합니다.
+    """
+    return user.is_superuser or is_member_of_group(user, '미디어팀')
+
 @login_required # 로그인한 사용자만 접근 가능
 def home(request):
     """
@@ -96,8 +103,8 @@ def home(request):
 
         # 버튼 노출 조건
         'show_ppt_creation_start_button': user_is_media_team and ppt_request and ppt_request.status != 'completed',
-        'show_worship_info_input_button': user_is_worship_prep_team and not worship_info,
-        'show_song_info_input_button': user_is_praise_team and worship_info and not SongInfo.objects.filter(worship_info=worship_info).exists(),
+        'show_worship_info_input_button': (user_is_worship_prep_team or user_is_media_team) and not worship_info,
+        'show_song_info_input_button': (user_is_praise_team or user_is_media_team) and worship_info and not SongInfo.objects.filter(worship_info=worship_info).exists(),
     }
 
     return render(request, 'core/home.html', context)
@@ -105,6 +112,8 @@ def home(request):
 # 예배준비팀 권한 체크
 def worship_prep_team_required(function):
     def wrapper(request, *args, **kwargs):
+        if is_media_team_or_superuser(request.user): # 미디어팀이나 슈퍼유저는 예배준비팀 권한을 우회
+            return function(request, *args, **kwargs)
         if not is_member_of_group(request.user, '예배준비팀'):
             messages.error(request, "예배준비팀만 이 페이지에 접근할 수 있습니다.")
             return redirect('home')
@@ -187,6 +196,8 @@ def worship_info_input_view(request):
 # 찬양팀 권한 체크
 def praise_team_required(function):
     def wrapper(request, *args, **kwargs):
+        if is_media_team_or_superuser(request.user): # 미디어팀이나 슈퍼유저는 예배준비팀 권한을 우회
+            return function(request, *args, **kwargs)
         if not is_member_of_group(request.user, '찬양팀'):
             messages.error(request, "찬양팀만 이 페이지에 접근할 수 있습니다.")
             return redirect('home')
