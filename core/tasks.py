@@ -1,6 +1,8 @@
 # core/tasks.py
 
 from celery import shared_task
+from celery.app.task import Task as TaskType # celery.app.task.Task 타입 힌트를 위해 Task 임포트
+
 from django.conf import settings
 from django.core.files import File
 from django.utils import timezone
@@ -23,7 +25,7 @@ from core.models import PptTemplate, WorshipInfo, SongInfo, PptRequest
 
 
 @shared_task(bind=True)
-def generate_ppt_task(self, worship_info_id: int):
+def generate_ppt_task(self: TaskType, worship_info_id: int):
     """
     예배 PPT를 생성하는 Celery 태스크.
     진행 상황을 PptRequest 모델에 업데이트합니다.

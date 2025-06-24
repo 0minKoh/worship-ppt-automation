@@ -1,5 +1,6 @@
 # core/views.py
 
+import os
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import AccessMixin # 권한 데코레이터/믹스인을 위한 기본 Mixin
@@ -14,6 +15,10 @@ from django.http import HttpResponse
 from django.core.files.storage import default_storage
 
 from django.utils.decorators import method_decorator
+
+# Celery 태스크 임포트
+from core.tasks import generate_ppt_task
+
 
 # User 모델을 가져오는 표준 방법 (models.py와 동일하게 유지)
 from django.contrib.auth import get_user_model
@@ -248,14 +253,83 @@ def song_info_input_view(request):
     return render(request, 'core/song_info_form.html', context)
 
 
-# --- 임시 뷰 함수들 (향후 실제 뷰로 대체되거나 로직 추가 예정) ---
 @login_required
 def ppt_creation_start_view(request):
-    """미디어팀만 접근 가능"""
+    """
+    PPT 제작을 시작하는 페이지. 미디어팀만 접근 가능.
+    GET 요청 시 확인 페이지를 렌더링하고, POST 요청 시 Celery 태스크를 트리거합니다.
+    """
     if not is_member_of_group(request.user, '미디어팀'):
         messages.error(request, "미디어팀만 이 페이지에 접근할 수 있습니다.")
         return redirect('home')
-    return render(request, 'core/ppt_creation_start.html') # 새로운 템플릿 생성 예정
+    
+    # 1. 이번 주 주일 날짜 계산
+    today = date.today()
+    days_until_sunday = (6 - today.weekday() + 7) % 7
+    if today.weekday() == 6: # 오늘이 일요일이면 다음 주 일요일
+        upcoming_sunday = today + timedelta(days=7)
+    else: # 오늘이 일요일이 아니면 이번 주 일요일
+        upcoming_sunday = today + timedelta(days=days_until_sunday)
+
+    # 2. 해당 주일 예배 정보 조회 (없으면 오류)
+    worship_info = None
+    try:
+        worship_info = WorshipInfo.objects.get(worship_date=upcoming_sunday)
+    except WorshipInfo.DoesNotExist:
+        messages.error(request, f"{upcoming_sunday} 주일 예배 정보가 존재하지 않아 PPT를 제작할 수 없습니다.")
+        return redirect('home') # 예배 정보 없으면 메인으로 리다이렉트
+
+    # 3. 찬양 정보 필수 확인 (일반 찬양 및 결단 찬양)
+    has_normal_songs = SongInfo.objects.filter(worship_info=worship_info, is_ending_song=False).exists()
+    has_ending_song = SongInfo.objects.filter(worship_info=worship_info, is_ending_song=True).exists()
+
+    if not has_normal_songs:
+        messages.error(request, f"{upcoming_sunday} 일반 찬양 정보가 입력되지 않아 PPT를 제작할 수 없습니다.")
+        return redirect('home')
+    if not has_ending_song:
+        messages.error(request, f"{upcoming_sunday} 결단 찬양 정보가 입력되지 않아 PPT를 제작할 수 없습니다.")
+        return redirect('home')
+
+    # 4. PptRequest 객체 가져오거나 생성
+    # 이 부분에서 defaults를 설정할 때, 요청자가 누구인지 명확히 전달합니다.
+    # PptRequest의 상태는 'pending' 또는 'failed' 등 재요청 가능한 상태여야 합니다.
+    ppt_request, created = PptRequest.objects.get_or_create(
+        worship_info=worship_info,
+        defaults={'requested_by': request.user, 'status': 'pending', 'progress_message': 'PPT 제작 대기 중'}
+    )
+    # 이미 존재하는데 상태가 'processing' 또는 'completed'이면 중복 요청 방지
+    if not created and ppt_request.status in ['processing', 'completed']:
+        messages.warning(request, "이미 PPT 제작이 진행 중이거나 완료되었습니다.")
+        return redirect('home')
+    
+    # 이전 요청이 실패했거나, 정보 누락으로 대기 중이었다면 상태를 'pending'으로 업데이트
+    if not created and ppt_request.status in ['failed', 'no_song_info', 'no_worship_info']:
+        ppt_request.status = 'pending'
+        ppt_request.progress_message = "PPT 제작을 다시 요청할 수 있습니다."
+        ppt_request.save()
+
+
+    if request.method == 'POST':
+        # Celery 태스크 실행
+        # 태스크에 PptRequest의 ID를 전달하여 태스크 내에서 PptRequest를 업데이트하도록 합니다.
+        task_result = generate_ppt_task.delay(worship_info.id) # worship_info_id를 태스크에 전달
+
+        # PptRequest에 Celery 태스크 ID 저장 및 상태 업데이트
+        ppt_request.celery_task_id = task_result.id
+        ppt_request.status = 'processing'
+        ppt_request.progress_message = "PPT 제작 요청을 처리 중입니다..."
+        ppt_request.requested_by = request.user # 요청자를 명확히
+        ppt_request.save()
+        
+        messages.success(request, "PPT 제작이 요청되었습니다. 진행 상황을 메인 페이지에서 확인해주세요.")
+        return redirect('home')
+    
+    context = {
+        'worship_info': worship_info,
+        'ppt_request': ppt_request,
+        'upcoming_sunday': upcoming_sunday,
+    }
+    return render(request, 'core/ppt_creation_start.html', context)
 
 @login_required
 def ppt_download_view(request, ppt_request_id):
@@ -266,20 +340,26 @@ def ppt_download_view(request, ppt_request_id):
     """
     ppt_request = get_object_or_404(PptRequest, id=ppt_request_id)
     
-    # 보안: 권한이 있는 사용자만 다운로드 가능하도록 추후 로직 추가 필요
-    # 예: if not is_member_of_group(request.user, '미디어팀'): ...
+    # 다운로드 권한 체크 (추후 더 상세히 구현 가능)
+    # 모든 로그인 사용자에게 허용 (임시)
     
-    if ppt_request.generated_ppt_file:
-        # 실제 파일 다운로드 로직 (간단한 예시, 실제 배포 시에는 더 견고하게)
-        file_path = ppt_request.generated_ppt_file.path
-        if default_storage.exists(file_path):
-            with default_storage.open(file_path, 'rb') as pdf:
-                response = HttpResponse(pdf.read(), content_type='application/vnd.openxmlformats-officedocument.presentationml.presentation')
-                response['Content-Disposition'] = f'attachment; filename="{ppt_request.generated_ppt_file.name}"'
-                return response
-        else:
-            messages.error(request, "생성된 PPT 파일이 존재하지 않습니다.")
+    if not ppt_request.generated_ppt_file or ppt_request.status != 'completed':
+        messages.error(request, "다운로드할 PPT 파일이 없거나, 아직 제작 완료되지 않았습니다.")
+        return redirect('home')
+
+    file_path = ppt_request.generated_ppt_file.path
+    if default_storage.exists(file_path):
+        from django.http import FileResponse
+        try:
+            response = FileResponse(default_storage.open(file_path, 'rb'), 
+                                    content_type='application/vnd.openxmlformats-officedocument.presentationml.presentation')
+            # 파일명을 UTF-8로 인코딩하여 한글 파일명 지원
+            encoded_filename = os.path.basename(file_path).encode('utf-8').decode('latin-1')
+            response['Content-Disposition'] = f'attachment; filename="{encoded_filename}"'
+            return response
+        except Exception as e:
+            messages.error(request, f"파일 다운로드 중 오류가 발생했습니다: {e}")
     else:
-        messages.error(request, "다운로드할 PPT 파일이 없습니다.")
+        messages.error(request, "생성된 PPT 파일이 저장소에 존재하지 않습니다.")
     
-    return redirect('home') # 파일 없거나 오류 시 메인 페이지로 리다이렉트
+    return redirect('home')
