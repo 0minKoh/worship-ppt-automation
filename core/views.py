@@ -20,6 +20,9 @@ from django.utils.decorators import method_decorator
 # Celery 태스크 임포트
 from core.tasks import generate_ppt_task
 
+from django.http import JsonResponse
+from celery.result import AsyncResult
+
 
 # User 모델을 가져오는 표준 방법 (models.py와 동일하게 유지)
 from django.contrib.auth import get_user_model
@@ -380,3 +383,37 @@ def ppt_download_view(request, ppt_request_id):
         messages.error(request, "생성된 PPT 파일이 저장소에 존재하지 않습니다.")
     
     return redirect('home')
+
+@login_required
+def ppt_task_status_api(request, task_id):
+    """
+    Celery 태스크의 현재 상태를 JSON으로 반환하는 API 뷰.
+    프론트엔드에서 AJAX 폴링을 통해 사용됩니다.
+    """
+    try:
+        # PptRequest 모델에서 celery_task_id를 사용하여 요청 객체를 찾습니다.
+        ppt_request = PptRequest.objects.get(celery_task_id=task_id)
+        
+        # Celery의 AsyncResult를 사용하여 태스크의 실제 상태를 가져올 수도 있지만,
+        # PptRequest 모델에 이미 상태와 메시지가 업데이트되므로 모델 데이터 활용.
+        # task_result = AsyncResult(task_id) # 필요 시 Celery 백엔드에서 직접 상태 조회
+
+        # PPT 다운로드 URL
+        download_url = None
+        if ppt_request.status == 'completed' and ppt_request.generated_ppt_file:
+            download_url = ppt_request.generated_ppt_file.url
+
+        # JSON 응답 데이터 구성
+        data = {
+            'status': ppt_request.status,
+            'status_display': ppt_request.get_status_display(),
+            'progress_message': ppt_request.progress_message,
+            'download_url': download_url,
+            'task_id': task_id,
+        }
+        return JsonResponse(data)
+
+    except PptRequest.DoesNotExist:
+        return JsonResponse({'status': 'not_found', 'message': '해당 PPT 제작 요청을 찾을 수 없습니다.'}, status=404)
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': f'오류 발생: {e}'}, status=500)

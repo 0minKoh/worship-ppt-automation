@@ -52,14 +52,23 @@
             margin-bottom: 15px;
             font-size: 1.5em;
         }
-        .status-message {
+        #current-status-display, #progress-message-display { /* ID 추가 */
             font-size: 1.8em;
             font-weight: bold;
             color: #d32f2f; /* 기본적으로 빨간색, 변경 가능 */
         }
-        .status-message.completed { color: #388e3c; } /* 완료 시 녹색 */
-        .status-message.processing { color: #fbc02d; } /* 진행 중 시 주황색 */
-        .status-message.pending { color: #007bff; } /* 대기 중 시 파란색 */
+        #current-status-display.completed { color: #388e3c; } /* 완료 시 녹색 */
+        #current-status-display.processing { color: #fbc02d; } /* 진행 중 시 주황색 */
+        #current-status-display.pending { color: #007bff; } /* 대기 중 시 파란색 */
+
+        /* 진행 메시지 스타일 */
+        #progress-message-display {
+            font-size: 1.2em;
+            color: #666;
+            margin-top: 10px;
+            min-height: 1.5em; /* 메시지가 없을 때 공간 확보 */
+        }
+
 
         .button-group {
             margin-top: 30px;
@@ -127,20 +136,28 @@
 
         <div class="status-box">
             <h3>{{ upcoming_sunday }} 주일 예배 PPT 현황</h3>
-            <p class="status-message 
+            {# 현황 메시지 및 진행 메시지를 업데이트할 요소 #}
+            <p id="current-status-display" class="status-message 
                 {% if ppt_status_display == '제작 완료' %}completed{% elif ppt_status_display == '제작 중' %}processing{% elif ppt_status_display == '대기 중' %}pending{% endif %}">
                 {{ ppt_status_display }}
             </p>
-            {% if ppt_request and ppt_request.generated_ppt_file %}
-                <!-- download 속성을 추가하여 파일 다운로드 유도 -->
-                <a href="{{ ppt_request.generated_ppt_file.url }}" class="action-button primary" download>PPT 다운로드</a>
-            {% endif %}
+            <p id="progress-message-display">{{ ppt_request.progress_message|default:"" }}</p> {# 진행 상황 메시지 표시 #}
+            
+            {# 다운로드 버튼은 JavaScript에서 동적으로 활성화/변경될 수 있도록 ID 추가 #}
+            <div id="download-button-container">
+                {% if show_ppt_download_button %}
+                    <a href="{{ ppt_request.generated_ppt_file.url }}" class="action-button primary" download>PPT 다운로드</a>
+                {% endif %}
+            </div>
         </div>
 
         <div class="button-group">
-            {% if show_ppt_creation_start_button %}
-                <a href="{% url 'ppt_creation_start' %}" class="action-button primary">PPT 제작 시작</a>
-            {% endif %}
+            {# PPT 제작 시작 버튼에 ID 추가 #}
+            <div id="ppt-creation-start-button-container">
+                {% if show_ppt_creation_start_button %}
+                    <a href="{% url 'ppt_creation_start' %}" class="action-button primary" id="ppt-creation-start-button">PPT 제작 시작</a>
+                {% endif %}
+            </div>
 
             {% if show_worship_info_input_button %}
                 <a href="{% url 'worship_info_input' %}" class="action-button secondary">예배 정보 입력</a>
@@ -151,11 +168,119 @@
             {% endif %}
         </div>
 
-        <!-- 로그아웃 링크를 POST 요청을 보내는 폼으로 변경 -->
         <form action="{% url 'logout' %}" method="post" class="logout-form">
             {% csrf_token %}
             <button type="submit">로그아웃</button>
         </form>
     </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const currentStatusDisplay = document.getElementById('current-status-display');
+            const progressMessageDisplay = document.getElementById('progress-message-display');
+            const downloadButtonContainer = document.getElementById('download-button-container');
+            const pptCreationStartButtonContainer = document.getElementById('ppt-creation-start-button-container');
+
+            // Django 템플릿 변수를 JavaScript 변수로 가져오기
+            // Celery 태스크 ID는 PPT 요청이 있는 경우에만 가져옵니다.
+            const pptRequestId = "{{ ppt_request.id }}"; // PptRequest ID
+            const celeryTaskId = "{{ ppt_request.celery_task_id|default:'' }}"; // Celery Task ID
+            const initialStatus = "{{ ppt_request.status|default:'none' }}"; // 초기 상태
+            
+            let pollingInterval; // 폴링 인터벌 ID
+
+            function updateStatusUI(status, statusDisplay, progressMessage, downloadUrl = null) {
+                // 상태 메시지 업데이트
+                currentStatusDisplay.textContent = statusDisplay;
+                currentStatusDisplay.className = 'status-message ' + status; // CSS 클래스 업데이트
+                
+                // 진행 메시지 업데이트
+                progressMessageDisplay.textContent = progressMessage;
+
+                // 버튼 상태 업데이트
+                if (status === 'processing') {
+                    // 제작 중일 때는 'PPT 제작 시작' 버튼을 비활성화하거나 숨김
+                    if (pptCreationStartButtonContainer) {
+                        pptCreationStartButtonContainer.style.display = 'none';
+                    }
+                    // 다운로드 버튼 숨김 (아직 완료 안 됐으므로)
+                    downloadButtonContainer.innerHTML = ''; 
+                } else if (status === 'completed') {
+                    // 완료되면 'PPT 제작 시작' 버튼 숨김
+                    if (pptCreationStartButtonContainer) {
+                        pptCreationStartButtonContainer.style.display = 'none';
+                    }
+                    // 다운로드 버튼 활성화
+                    if (downloadUrl) {
+                        downloadButtonContainer.innerHTML = `<a href="${downloadUrl}" class="action-button primary" download>PPT 다운로드</a>`;
+                    } else {
+                        downloadButtonContainer.innerHTML = '';
+                    }
+                    // 알림 (한 번만)
+                    if (!sessionStorage.getItem('ppt_completed_notified_' + celeryTaskId)) {
+                        alert(`${progressMessage}`);
+                        sessionStorage.setItem('ppt_completed_notified_' + celeryTaskId, 'true');
+                    }
+                    clearInterval(pollingInterval); // 폴링 중지
+                } else if (status === 'failed') {
+                    // 실패하면 'PPT 제작 시작' 버튼을 다시 표시할지 여부 결정 (현재 로직에서는 home 뷰에서 판단)
+                    // messages.warning('PPT 제작이 실패했습니다. 다시 시도해 주세요.'); // Django messages는 서버에서 전달됨
+                    if (pptCreationStartButtonContainer) {
+                        pptCreationStartButtonContainer.style.display = 'block'; // 가정: 실패하면 다시 시작 가능
+                    }
+                    downloadButtonContainer.innerHTML = ''; // 다운로드 버튼 제거
+                    // 알림 (한 번만)
+                    if (!sessionStorage.getItem('ppt_failed_notified_' + celeryTaskId)) {
+                        alert(`PPT 제작이 실패했습니다: ${progressMessage}. 다시 시도해주세요.`);
+                        sessionStorage.setItem('ppt_failed_notified_' + celeryTaskId, 'true');
+                    }
+                    clearInterval(pollingInterval); // 폴링 중지
+                } else { // pending, no_info, not_found 등
+                    // PPT 제작 시작 버튼을 원래대로 표시 (home 뷰 로직에 따름)
+                    if (pptCreationStartButtonContainer) {
+                         const initialDisplay = pptCreationStartButtonContainer.dataset.initialDisplay || '';
+                         pptCreationStartButtonContainer.style.display = initialDisplay; // 초기 상태로 되돌림
+                    }
+                    downloadButtonContainer.innerHTML = ''; // 다운로드 버튼 제거
+                    clearInterval(pollingInterval); // 폴링 중지 (더 이상 진행되지 않는 상태)
+                }
+            }
+
+            // 폴링 함수
+            function pollPptStatus() {
+                if (!celeryTaskId || initialStatus === 'completed' || initialStatus === 'failed') {
+                    clearInterval(pollingInterval); // 이미 완료/실패되었거나 태스크 ID가 없으면 폴링 중지
+                    return;
+                }
+                
+                fetch(`/api/ppt-status/${celeryTaskId}/`)
+                    .then(response => response.json())
+                    .then(data => {
+                        updateStatusUI(data.status, data.status_display, data.progress_message, data.download_url);
+                        if (data.status === 'completed' || data.status === 'failed') {
+                            clearInterval(pollingInterval); // 작업 완료/실패 시 폴링 중지
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error polling PPT status:', error);
+                        // 오류 발생 시에도 사용자에게 알림을 줄 수 있음
+                        progressMessageDisplay.textContent = '상태 업데이트 중 오류 발생.';
+                        clearInterval(pollingInterval); // 오류 발생 시 폴링 중지
+                    });
+            }
+
+            // PPT 제작이 시작된 상태라면 폴링 시작
+            if (celeryTaskId && (initialStatus === 'processing' || initialStatus === 'pending')) {
+                // 초기 'PPT 제작 시작' 버튼의 display 속성을 저장 (나중에 복원하기 위해)
+                if (pptCreationStartButtonContainer) {
+                    pptCreationStartButtonContainer.dataset.initialDisplay = window.getComputedStyle(pptCreationStartButtonContainer).display;
+                }
+                // 최초 한 번 상태 업데이트
+                pollPptStatus();
+                // 5초마다 폴링 시작
+                pollingInterval = setInterval(pollPptStatus, 5000); // 5초마다 업데이트
+            }
+        });
+    </script>
 </body>
 </html>
