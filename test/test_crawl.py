@@ -2,7 +2,6 @@
 
 import os
 import sys
-from unittest.mock import patch, Mock
 import requests # requests 임포트 (requests.exceptions.RequestException을 위해)
 
 # 프로젝트 루트 디렉토리를 sys.path에 추가하여 모듈 임포트 가능하게 함
@@ -20,8 +19,13 @@ def run_tests():
 
     # 테스트 1: 성공적인 가사 크롤링 (유효한 Bugs URL)
     print("\n--- Test 1: Successful lyrics crawling (Valid Bugs URL) ---")
-    bugs_url_success = "https://music.bugs.co.kr/track/7004582?wl_ref=list_tr_08_mab"
+    bugs_url_success = "https://music.bugs.co.kr/track/2844343"
     lyrics: str = crawl_lyrics(bugs_url_success)
+    print("Output:", lyrics)
+
+    bugs_url_success = "https://music.bugs.co.kr/track/31279684"
+    lyrics: str = crawl_lyrics(bugs_url_success)
+
     print("Output:", lyrics)
 
     print("\n--- All crawl_lyrics tests attempted. Check logs for 'Passed!' messages. ---")

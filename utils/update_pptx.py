@@ -122,8 +122,6 @@ def _insert_slide_at_index(prs: PresentationType, slide_to_move: SlideType, targ
     # 3. 원하는 target_index 위치에 다시 삽입합니다.
     #    prs.slides._sldIdLst는 슬라이드의 순서를 제어하는 내부 리스트입니다.
     xml_slides.insert(target_index, target_xml_slide_element)
-    
-    print(f"Moved slide {slide_to_move.slide_id} to index {target_index}.")
 
 
 

@@ -1,6 +1,7 @@
 # core/forms.py
 
 import json
+import re
 from django import forms
 from .models import WorshipInfo, SongInfo
 from django.forms import inlineformset_factory # SongInfo를 WorshipInfo와 함께 관리하기 위함
@@ -45,7 +46,7 @@ class WorshipInfoForm(forms.ModelForm):
             'worship_type': forms.Select(attrs={'class': 'form-select'}),
             'speaker': forms.TextInput(attrs={'class': 'form-input', 'value': '노진수 목사'}),
             'sermon_title': forms.TextInput(attrs={'class': 'form-input', 'placeholder': '예: 여호와가 누구이기에'}),
-            'sermon_scripture': forms.TextInput(attrs={'class': 'form-input', 'placeholder': '예: 출애굽기 3:4-12'}),
+            'sermon_scripture': forms.TextInput(attrs={'class': 'form-input', 'placeholder': '예: 출애굽기 3:4 - 3:12'}),
             'prayer_minister': forms.TextInput(attrs={'class': 'form-input', 'placeholder': '예: 임현서 청년'}),
             'offering_minister': forms.TextInput(attrs={'class': 'form-input', 'value': '이현 청년'}),
             'ads_manager': forms.TextInput(attrs={'class': 'form-input', 'value': '노진수 목사'}),
@@ -94,6 +95,58 @@ class WorshipInfoForm(forms.ModelForm):
             #     pass
 
         return cleaned_announcements # 유효한 경우 정제된 Python 객체 반환
+    
+    # 성경 본문 범위 유효성 검증 메서드 추가
+    def clean_sermon_scripture(self):
+        scripture = self.cleaned_data.get('sermon_scripture')
+        if not scripture:
+            return scripture # 비어있는 필드는 필수 검증 (blank=False)에 맡김
+
+        # "책이름 장:절 - 장:절" 또는 "책이름 장:절" 형식 검증
+        # 예: "요한복음 3:16-18", "창세기 1:1"
+        # 띄어쓰기 허용, 마지막 - 이후는 생략 가능 (단일 절 또는 장 전체)
+        # 챕터와 절이 반드시 숫자여야 함
+        
+        # 패턴: (책이름)\s*(\d+):(\d+)(?:\s*-\s*(?:(\S+?)\s*)?(\d+):(\d+))?
+        # Group 1: 시작 책 이름 (예: 요한복음)
+        # Group 2: 시작 장 (예: 3)
+        # Group 3: 시작 절 (예: 16)
+        # Group 4: 끝 책 이름 (선택적, 예: 요한복음)
+        # Group 5: 끝 장 (예: 18)
+        # Group 6: 끝 절 (예: 18)
+
+        # 더 간단한 패턴: 책이름 숫자:숫자 (- 숫자:숫자)
+        # `core/tasks.py`의 파싱 로직과 유사하게
+        pattern = re.compile(r'^\s*(.+?)\s*(\d+):(\d+)\s*(?:-\s*(?:(.+?)\s*)?(\d+):(\d+))?\s*$')
+        
+        match = pattern.match(scripture)
+        if not match:
+            raise forms.ValidationError("올바른 성경 본문 범위 형식이 아닙니다. '책이름 장:절 - 장:절' 또는 '책이름 장:절' 형식을 따르세요.")
+        
+        # 추가적인 논리적 유효성 검사 (시작 절/장 > 끝 절/장 등)
+        try:
+            start_book = match.group(1).strip()
+            start_ch = int(match.group(2))
+            start_verse = int(match.group(3))
+            
+            end_book = match.group(4) # None일 수 있음
+            end_ch = int(match.group(5)) if match.group(5) else start_ch # 끝 장 없으면 시작 장과 동일
+            end_verse = int(match.group(6)) if match.group(6) else start_verse # 끝 절 없으면 시작 절과 동일
+            
+            # 끝 책 이름이 명시되었다면 시작 책 이름과 같아야 함 (다르면 오류)
+            if end_book and end_book.strip() != start_book:
+                raise forms.ValidationError("시작과 끝 성경책 이름이 다릅니다. 동일한 성경책 내에서만 범위를 지정할 수 있습니다.")
+
+            # 시작 절/장이 끝 절/장보다 큰 경우 오류
+            if start_ch > end_ch:
+                raise forms.ValidationError("시작 장이 끝 장보다 큽니다.")
+            if start_ch == end_ch and start_verse > end_verse:
+                raise forms.ValidationError("시작 절이 끝 절보다 큽니다.")
+
+        except (ValueError, TypeError): # int 변환 실패 등
+            raise forms.ValidationError("장과 절은 숫자로 입력해야 합니다.")
+        
+        return scripture # 유효하면 원본 스크립처 반환
 
 
 class SongInfoForm(forms.ModelForm):

@@ -122,7 +122,7 @@ def get_bible_contents(bible_book: str, begin_ch: int, begin_verse: int, end_ch:
     verses = []
     is_in_range = False # 구절 범위 시작 플래그
 
-    with open(file_path, 'r', encoding='utf-8') as f:
+    with open(file_path, 'r', encoding='EUC-KR') as f:
         for line in f:
             parsed_line = parse_verse_line(line, bible_book)
             if not parsed_line:

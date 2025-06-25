@@ -66,14 +66,13 @@ def generate_ppt_task(self: TaskType, worship_info_id: int):
         self.update_state(state='PROGRESS', meta={'progress': 10, 'message': ppt_request.progress_message})
 
         # 3. 예배 정보 필드 (기도자, 봉헌자, 광고 책임자, 성경봉독 범위, 설교자, 축도자) 수정
-        # test_update_pptx.py의 SLIDE_INDEX 상수를 참고하여 인덱스 사용
         SLIDE_INDEX_PRAYER = 14
         SLIDE_INDEX_OFFERING = 15
         SLIDE_INDEX_ADS_MANAGER = 18 # core/models.py 필드명과 일치
         SLIDE_INDEX_BIBLE_RANGE = 21
         SLIDE_INDEX_SERMON_TITLE = 23
-        SLIDE_INDEX_ENDING_SONG_TITLE_TEMPLATE = 28
-        SLIDE_INDEX_BENEDICTION_MINISTER = 37 # core/models.py 필드명과 일치
+        SLIDE_INDEX_ENDING_SONG_TITLE_TEMPLATE = 27
+        SLIDE_INDEX_BENEDICTION_MINISTER = 37
 
         prs = edit_text_field(prs=prs, slide_index=SLIDE_INDEX_PRAYER, is_title=True, new_text=worship_info.prayer_minister)
         prs = edit_text_field(prs=prs, slide_index=SLIDE_INDEX_OFFERING, is_title=True, new_text=worship_info.offering_minister)
@@ -114,7 +113,7 @@ def generate_ppt_task(self: TaskType, worship_info_id: int):
                 
                 # 임시 로직: 가사를 간단히 줄바꿈 기준으로 분할
                 lines = current_lyrics.split('\n')
-                chunk_size = 5 # 한 슬라이드당 5줄
+                chunk_size = 4 # 한 슬라이드당 4줄
                 current_lyrics_pages = ["\n".join(lines[i:i + chunk_size]) for i in range(0, len(lines), chunk_size) if "\n".join(lines[i:i + chunk_size]).strip()]
                 if not current_lyrics_pages: # 빈 가사일 경우
                     current_lyrics_pages = ["가사를 분할할 수 없습니다."]
@@ -127,8 +126,8 @@ def generate_ppt_task(self: TaskType, worship_info_id: int):
                 "splitted_lyrics": current_lyrics_pages
             })
         
-        SLIDE_INDEX_START_SONG = 5 # test_update_pptx.py의 SLIDE_INDEX_SONG_TITLE_START와 동일
-        SLIDE_INDEX_LYRICS_TEMPLATE = 6 # test_update_pptx.py의 SLIDE_INDEX_SONG_LYRICS_START와 동일
+        SLIDE_INDEX_START_SONG = 5
+        SLIDE_INDEX_LYRICS_TEMPLATE = 6
         
         for index, song_data in enumerate(songs_data_for_ppt):
             song_title = song_data["title"]
@@ -141,14 +140,14 @@ def generate_ppt_task(self: TaskType, worship_info_id: int):
             # 찬양 제목 슬라이드 수정 (기준 인덱스 + 현재까지 추가된 슬라이드 수)
             prs = edit_text_field(
                 prs=prs,
-                slide_index=SLIDE_INDEX_START_SONG + index * 2 + cumulative_added_slide_count, # main.py의 로직
+                slide_index=SLIDE_INDEX_START_SONG + index * 2 + cumulative_added_slide_count,
                 is_title=True,
                 new_text=song_title
             )
             # 가사 슬라이드 추가 (기준 인덱스 + 1 + 현재까지 추가된 슬라이드 수)
             added_res = add_lyrics_slides(
                 prs=prs,
-                duplicate_slide_index=SLIDE_INDEX_LYRICS_TEMPLATE + index * 2 + cumulative_added_slide_count, # main.py의 로직
+                duplicate_slide_index=SLIDE_INDEX_LYRICS_TEMPLATE + index * 2 + cumulative_added_slide_count,
                 slide_texts=splited_lyrics
             )
             prs = added_res["prs"]
@@ -161,7 +160,7 @@ def generate_ppt_task(self: TaskType, worship_info_id: int):
         # 5. 광고 페이지 추가
         ads_from_db = worship_info.worship_announcements
         if ads_from_db:
-            SLIDE_INDEX_ADS_CONTENTS_TEMPLATE = 20 # test_update_pptx.py와 동일
+            SLIDE_INDEX_ADS_CONTENTS_TEMPLATE = 20
             added_ads_count = add_ads_slides(prs, ads_from_db, SLIDE_INDEX_ADS_CONTENTS_TEMPLATE + cumulative_added_slide_count)
             cumulative_added_slide_count += added_ads_count
         
@@ -171,35 +170,28 @@ def generate_ppt_task(self: TaskType, worship_info_id: int):
 
 
         # 6. 성경봉독 슬라이드 추가
-        bible_range_parts = worship_info.sermon_scripture.replace(" ", "").split('-')
-        bible_start = bible_range_parts[0]
-        bible_end = bible_range_parts[1] if len(bible_range_parts) > 1 else bible_start
+        # Sermon Scripture를 파싱하여 get_local_bible_contents에 전달
+        scripture = worship_info.sermon_scripture # 폼에서 이미 유효성 검사되었으므로 파싱 로직 단순화
+        
+        # Regex to parse "책이름 장:절 - 장:절" or "책이름 장:절"
+        pattern = re.compile(r'^\s*(.+?)\s*(\d+):(\d+)\s*(?:-\s*(?:(.+?)\s*)?(\d+):(\d+))?\s*$')
+        match = pattern.match(scripture)
 
-        try:
-            book_start_ch_verse = re.match(r'(.+?)\s*(\d+):(\d+)', bible_start)
-            book = book_start_ch_verse.group(1).strip()
-            begin_ch = int(book_start_ch_verse.group(2))
-            begin_verse = int(book_start_ch_verse.group(3))
+        if match:
+            start_book = match.group(1).strip()
+            start_ch = int(match.group(2))
+            start_verse = int(match.group(3))
+            
+            end_book = match.group(4) # Can be None
+            end_ch = int(match.group(5)) if match.group(5) else start_ch
+            end_verse = int(match.group(6)) if match.group(6) else start_verse
+            
+            bible_contents = get_local_bible_contents(start_book, start_ch, start_verse, end_ch, end_verse)
+        else:
+            # 이 else 블록은 clean_sermon_scripture에서 이미 걸러지지만, 안전을 위해 남겨둠
+            bible_contents = [{"title": "성경 본문", "contents": "성경 구절 형식이 올바르지 않아 내용을 가져올 수 없습니다."}]
 
-            book_end_ch_verse = re.match(r'(.+?)\s*(\d+):(\d+)', bible_end)
-            if book_end_ch_verse:
-                 end_ch = int(book_end_ch_verse.group(2))
-                 end_verse = int(book_end_ch_verse.group(3))
-            else:
-                 end_ch_verse_match = re.match(r'(\d+):(\d+)', bible_end)
-                 if end_ch_verse_match:
-                    end_ch = int(end_ch_verse_match.group(1))
-                    end_verse = int(end_ch_verse_match.group(2))
-                 else:
-                     raise ValueError("성경 본문 범위 형식이 올바르지 않습니다. '책이름 장:절 - 장:절' 형식을 따르세요.")
-
-            bible_contents = get_local_bible_contents(book, begin_ch, begin_verse, end_ch, end_verse)
-
-        except Exception as e:
-            print(f"Error parsing bible scripture or getting contents from local file: {e}")
-            bible_contents = [{"title": "성경 본문", "contents": f"성경 구절을 가져오는데 문제가 발생했습니다: {e}"}]
-
-        SLIDE_INDEX_BIBLE_CONTENTS_TEMPLATE = 22 # test_update_pptx.py와 동일
+        SLIDE_INDEX_BIBLE_CONTENTS_TEMPLATE = 22
         added_bible_count = add_bible_slides(prs, bible_contents, SLIDE_INDEX_BIBLE_CONTENTS_TEMPLATE + cumulative_added_slide_count)
         cumulative_added_slide_count += added_bible_count
         
@@ -235,7 +227,7 @@ def generate_ppt_task(self: TaskType, worship_info_id: int):
 
                 # 임시 로직: 가사를 간단히 줄바꿈 기준으로 분할
                 lines = current_lyrics.split('\n')
-                chunk_size = 5 # 한 슬라이드당 5줄
+                chunk_size = 4 # 한 슬라이드당 4줄
                 current_lyrics_pages = ["\n".join(lines[i:i + chunk_size]) for i in range(0, len(lines), chunk_size) if "\n".join(lines[i:i + chunk_size]).strip()]
                 if not current_lyrics_pages:
                     current_lyrics_pages = ["가사를 분할할 수 없습니다."]
@@ -245,7 +237,7 @@ def generate_ppt_task(self: TaskType, worship_info_id: int):
 
             added_slide_res = add_lyrics_slides(
                 prs=prs,
-                duplicate_slide_index=SLIDE_INDEX_ENDING_SONG_TITLE_TEMPLATE + 1 + cumulative_added_slide_count, # test_update_pptx.py의 SLIDE_INDEX_ENDING_SONG_LYRICS_TEMPLATE와 동일
+                duplicate_slide_index=SLIDE_INDEX_ENDING_SONG_TITLE_TEMPLATE + 1 + cumulative_added_slide_count,
                 slide_texts=current_lyrics_pages
             )
             prs = added_slide_res["prs"]
