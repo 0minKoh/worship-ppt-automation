@@ -92,11 +92,11 @@ def generate_ppt_task(self: TaskType, worship_info_id: int):
             current_lyrics = song.lyrics
             current_lyrics_pages = song.lyrics_pages
 
-            if not current_lyrics and song.youtube_url:
+            if not current_lyrics and song.source_url:
                 ppt_request.progress_message = f"'{song.title}' 가사를 크롤링 중입니다..."
                 ppt_request.save()
                 self.update_state(state='PROGRESS', meta={'progress': 30, 'message': ppt_request.progress_message})
-                current_lyrics = crawl_lyrics(song.youtube_url)
+                current_lyrics = crawl_lyrics(song.source_url)
                 if current_lyrics:
                     song.lyrics = current_lyrics
                     song.save()
@@ -215,11 +215,11 @@ def generate_ppt_task(self: TaskType, worship_info_id: int):
             current_lyrics = ending_song.lyrics
             current_lyrics_pages = ending_song.lyrics_pages
             
-            if not current_lyrics and ending_song.youtube_url:
+            if not current_lyrics and ending_song.source_url:
                 ppt_request.progress_message = f"'{ending_song.title}' 가사를 크롤링 중입니다..."
                 ppt_request.save()
                 self.update_state(state='PROGRESS', meta={'progress': 90, 'message': ppt_request.progress_message})
-                current_lyrics = crawl_lyrics(ending_song.youtube_url)
+                current_lyrics = crawl_lyrics(ending_song.source_url)
                 if current_lyrics:
                     ending_song.lyrics = current_lyrics
                     ending_song.save()

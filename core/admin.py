@@ -13,7 +13,7 @@ class WorshipInfoAdmin(admin.ModelAdmin):
 
 @admin.register(SongInfo)
 class SongInfoAdmin(admin.ModelAdmin):
-    list_display = ('worship_info', 'order', 'title', 'youtube_url', 'created_by')
+    list_display = ('worship_info', 'order', 'title', 'source_url', 'created_by')
     list_filter = ('worship_info__worship_type',)
     search_fields = ('title', 'lyrics')
     raw_id_fields = ('worship_info', 'created_by') # 외래키 필드를 ID로 입력 가능하게 하여 효율성 높임

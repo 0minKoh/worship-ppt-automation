@@ -2,8 +2,9 @@
 
 import json
 from django import forms
-from .models import WorshipInfo, SongInfo # 우리가 정의한 모델 임포트
+from .models import WorshipInfo, SongInfo
 from django.forms import inlineformset_factory # SongInfo를 WorshipInfo와 함께 관리하기 위함
+from django.forms import inlineformset_factory, BaseInlineFormSet # BaseInlineFormSet 임포트
 
 class WorshipInfoForm(forms.ModelForm):
     """
@@ -104,19 +105,48 @@ class SongInfoForm(forms.ModelForm):
         model = SongInfo
         # worship_info는 상위 폼(WorshipInfoForm)에서 자동으로 연결되므로 여기서는 제외합니다.
         # lyrics와 lyrics_pages는 크롤링/LLM으로 자동 채워지므로 제외합니다.
-        fields = ['order', 'title', 'youtube_url', 'is_ending_song']
+        fields = ['order', 'title', 'source_url', 'is_ending_song']
         labels = {
             'order': '찬양 순서',
             'title': '찬양 제목',
-            'youtube_url': 'YouTube URL',
+            'source_url': '가사 URL(현재 Bugs 사이트만 지원)',
             'is_ending_song': '결단 찬양 여부',
         }
         widgets = {
-            'order': forms.NumberInput(attrs={'class': 'form-input'}),
-            'title': forms.TextInput(attrs={'class': 'form-input'}),
-            'youtube_url': forms.URLInput(attrs={'class': 'form-input'}),
+            'order': forms.HiddenInput(), # 순서는 자동으로 관리되므로 숨김 필드로 처리
+            'title': forms.TextInput(attrs={
+                'class': 'form-input',
+                'placeholder': '예: 은혜 아니면'
+            }),
+            'source_url': forms.URLInput(attrs={ # 위젯도 'source_url'로 변경
+                'class': 'form-input',
+                'placeholder': '예: https://music.bugs.co.kr/track/7004582' # 플레이스홀더 변경
+            }),
             'is_ending_song': forms.CheckboxInput(attrs={'class': 'form-checkbox'}),
         }
+
+# SongInfoFormSet을 위한 BaseFormSet 정의
+class BaseSongInfoFormSet(BaseInlineFormSet):
+    def clean(self):
+        """
+        폼셋 전체의 유효성을 검사합니다.
+        특히 한 예배에 결단 찬양이 하나만 있는지 검사합니다.
+        """
+        super().clean()
+
+        ending_songs_count = 0
+        for form in self.forms:
+            # 삭제되지 않은(cleaned_data가 있고 DELETE 체크박스가 체크되지 않은) 폼만 검사
+            if form.cleaned_data and not form.cleaned_data.get('DELETE'):
+                if form.cleaned_data.get('is_ending_song'):
+                    ending_songs_count += 1
+        
+        if ending_songs_count > 1:
+            # 폼셋 전체에 유효성 오류 추가
+            raise forms.ValidationError("결단 찬양은 예배당 하나만 지정할 수 있습니다.")
+        elif ending_songs_count == 0 and self.forms: # 모든 폼이 존재하는데 결단찬양이 하나도 없으면 경고 (선택적)
+             # messages.warning(self.request, "Warning: 최소 하나 이상의 결단 찬양을 지정해주세요.") # 뷰에서 메시지 처리
+             pass # 모델 제약에서 잡아주므로 여기서는 1개 초과만 집중
 
 # WorshipInfo와 SongInfo를 한 페이지에서 함께 관리하기 위한 폼셋
 # 예배 정보에 여러 찬양 정보가 연결될 수 있으므로 inlineformset_factory를 사용합니다.
@@ -124,8 +154,9 @@ SongInfoFormSet = inlineformset_factory(
     WorshipInfo, # 부모 모델
     SongInfo,    # 자식 모델
     form=SongInfoForm,
-    fields=['order', 'title', 'youtube_url', 'is_ending_song'],
+    fields=['order', 'title', 'source_url', 'is_ending_song'],
     extra=1,     # 기본으로 보여줄 빈 폼의 개수
     can_delete=True, # 기존 객체 삭제 허용
-    can_order=False, # 순서 변경 기능 비활성화 (Order 필드로 직접 관리)
+    can_order=True,
+    formset=BaseSongInfoFormSet, # 커스텀 BaseFormSet 사용
 )

@@ -3,6 +3,7 @@
 from django.db import models
 from django.contrib.auth import get_user_model
 from django.utils import timezone
+from django.db.models import UniqueConstraint, Q
 
 User = get_user_model()
 
@@ -78,10 +79,10 @@ class SongInfo(TimestampedModel):
         related_name='song_infos',
         verbose_name="연결된 예배 정보"
     )
-    order = models.PositiveIntegerField(verbose_name="찬양 순서")
+    order = models.PositiveIntegerField(default=0, verbose_name="찬양 순서")
     title = models.CharField(max_length=200, verbose_name="찬양 제목")
-    youtube_url = models.URLField(max_length=500, blank=True, verbose_name="찬양 영상 URL")
-
+    source_url = models.URLField(max_length=500, blank=True, verbose_name="가사 출처 URL")
+    
     lyrics = models.TextField(blank=True, verbose_name="전체 찬양 가사")
     lyrics_pages = models.JSONField(default=list, blank=True, verbose_name="페이지별 가사")
 
@@ -92,15 +93,30 @@ class SongInfo(TimestampedModel):
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name='song_infos_created', # related_name 충돌 방지 위해 변경
+        related_name='song_infos_created',
         verbose_name="등록자"
     )
 
     class Meta:
         verbose_name = "찬양 정보"
         verbose_name_plural = "찬양 정보"
-        unique_together = ('worship_info', 'order', 'is_ending_song') # 결단찬양은 순서 중복 가능성 고려하여 추가
+        # unique_together = ('worship_info', 'order', 'is_ending_song')
         ordering = ['worship_info__worship_date', 'order', 'is_ending_song']
+        constraints = [
+            # 제약 1: 일반 찬양 (is_ending_song=False)의 경우, worship_info 내에서 order가 유일해야 합니다.
+            UniqueConstraint(
+                fields=['worship_info', 'order'],
+                condition=Q(is_ending_song=False),
+                name='unique_normal_song_order_per_worship'
+            ),
+            # 제약 2: 결단 찬양 (is_ending_song=True)은 각 예배 정보당 하나만 허용합니다.
+            UniqueConstraint(
+                fields=['worship_info'],
+                condition=Q(is_ending_song=True),
+                name='unique_ending_song_per_worship'
+            )
+        ]
+
 
     def __str__(self):
         song_type = "결단 찬양" if self.is_ending_song else "찬양"

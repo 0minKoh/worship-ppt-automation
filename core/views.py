@@ -13,6 +13,7 @@ from .forms import WorshipInfoForm, SongInfoFormSet
 
 from django.http import HttpResponse
 from django.core.files.storage import default_storage
+from django.db import transaction
 
 from django.utils.decorators import method_decorator
 
@@ -218,30 +219,45 @@ def song_info_input_view(request):
     if request.method == 'POST':
         formset = SongInfoFormSet(request.POST, request.FILES, instance=worship_info)
         if formset.is_valid():
-            instances = formset.save(commit=False)
-            for instance in instances:
-                if not instance.pk:
-                    instance.created_by = request.user
-                instance.save()
-            
-            # formset.save_m2m() # SongInfo에는 M2M 관계가 없으므로 필요 없음
-            
-            for obj in formset.deleted_objects:
-                obj.delete()
+            try:
+                with transaction.atomic(): # <--- 트랜잭션 시작: 모든 DB 작업은 이 블록 안에서 원자적으로 처리
+                    # 새로운 SongInfo 객체 생성 및 변경된 객체 저장
+                    # formset.save()는 commit=False가 아닐 경우, 내부적으로 transaction.atomic()을 사용하며
+                    # 모든 생성, 변경, 삭제 작업을 한 번에 처리하고 created_by를 반환하지 않습니다.
+                    # 따라서 created_by를 수동으로 설정하려면 commit=False를 사용하고 수동으로 저장해야 합니다.
 
-            messages.success(request, f"{upcoming_sunday} 찬양 정보가 성공적으로 저장되었습니다.")
+                    # created_by를 수동으로 할당하기 위해 commit=False로 인스턴스를 가져온 후,
+                    # 루프 내에서 created_by를 할당하고 개별적으로 save()를 호출합니다.
+                    # 이 방식은 폼셋의 save()가 반환하는 new_objects, changed_objects를 사용합니다.
+                    instances_to_save = formset.save(commit=False)
+                    for instance in instances_to_save:
+                        if not instance.pk: # 새로 생성되는 객체에 대해서만 created_by 할당
+                            instance.created_by = request.user
+                        instance.save() # 개별 인스턴스를 DB에 저장
 
-            ppt_request_obj, created = PptRequest.objects.get_or_create(
-                worship_info=worship_info,
-                defaults={'requested_by': request.user, 'status': 'pending'}
-            )
-            if not created:
-                if ppt_request_obj.status == 'no_song_info':
-                    ppt_request_obj.status = 'pending'
-                    ppt_request_obj.progress_message = "찬양 정보가 입력되었습니다. PPT 제작을 시작할 수 있습니다."
-                    ppt_request_obj.save()
+                    # 삭제 대상으로 표시된 기존 객체 삭제
+                    for obj in formset.deleted_objects:
+                        obj.delete()
 
-            return redirect('home')
+                messages.success(request, f"{upcoming_sunday} 찬양 정보가 성공적으로 저장되었습니다.")
+
+                # PPT 요청 상태 업데이트 (성공적으로 저장된 후에만)
+                ppt_request_obj, created = PptRequest.objects.get_or_create(
+                    worship_info=worship_info,
+                    defaults={'requested_by': request.user, 'status': 'pending', 'progress_message': '찬양 정보 입력 완료. PPT 제작 대기 중'}
+                )
+                if not created:
+                    if ppt_request_obj.status == 'no_song_info' or ppt_request_obj.status == 'failed':
+                        ppt_request_obj.status = 'pending'
+                        ppt_request_obj.progress_message = "찬양 정보가 업데이트되었습니다. PPT 제작을 시작할 수 있습니다."
+                        ppt_request_obj.save()
+
+                return redirect('home')
+
+            except Exception as e: # <--- 트랜잭션 내에서 발생한 IntegrityError 등의 예외를 여기서 잡음
+                # messages.error는 트랜잭션이 롤백된 후에도 작동합니다.
+                messages.error(request, f"찬양 정보 저장 중 오류가 발생했습니다: {e}. 입력 양식을 확인해주세요.")
+                # 에러 발생 시 formset에 에러가 추가될 것이고, 템플릿에서 렌더링될 것입니다.
         else:
             messages.error(request, "찬양 정보 저장에 실패했습니다. 입력 양식을 확인해주세요.")
     else:
