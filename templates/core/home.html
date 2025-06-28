@@ -1,125 +1,197 @@
-<!-- templates/core/home.html -->
 <!DOCTYPE html>
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>메인 대시보드 - 예배 PPT 자동화</title>
+    <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
+        /* CSS Reset 및 기본 스타일 */
+        body, h1, h2, h3, p, ul, li, label, input, textarea, select, button {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Pretendard', sans-serif; /* 토스 폰트 적용 */
+            color: #333; /* 기본 텍스트 색상 */
+        }
+
         body {
-            font-family: 'Inter', sans-serif;
+            background-color: #f9fafb; /* 토스 웹사이트의 배경색과 유사하게 설정 */
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
             min-height: 100vh;
-            background-color: #f0f2f5;
-            margin: 0;
-            padding: 20px;
-            box-sizing: border-box;
+            padding: 24px; /* 전체 페이지 패딩 */
         }
         .dashboard-container {
             background-color: #ffffff;
-            padding: 40px;
-            border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            padding: 48px; /* 내부 패딩 증가 */
+            border-radius: 16px; /* 더 둥근 모서리 */
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1); /* 더 부드럽고 깊은 그림자 */
             width: 100%;
-            max-width: 800px;
+            max-width: 680px; /* 대시보드 컨테이너 너비 조정 */
             text-align: center;
             box-sizing: border-box;
             color: #333;
         }
         h2 {
-            color: #2c3e50;
-            margin-bottom: 25px;
-            font-size: 2em;
+            font-size: 32px; /* 제목 크기 키움 */
+            font-weight: 700; /* 볼드 */
+            color: #333; /* 토스 메인 텍스트 색상 */
+            margin-bottom: 12px; /* 간격 조정 */
         }
         .user-info {
-            font-size: 1.1em;
-            margin-bottom: 30px;
-            color: #555;
+            font-size: 17px; /* 폰트 크기 조정 */
+            margin-bottom: 40px; /* 간격 증가 */
+            color: #6b7684; /* 부드러운 텍스트 색상 */
+            line-height: 1.5; /* 줄 간격 */
         }
+        .user-info span {
+            font-weight: 500; /* 역할 강조 */
+        }
+        .user-info span[style*="#1a73e8"] { color: #3462fe !important; } /* 미디어팀: 토스 블루 계열 */
+        .user-info span[style*="#e91e63"] { color: #f24e7e !important; } /* 찬양팀: 밝은 핑크 계열 */
+        .user-info span[style*="#673ab7"] { color: #8a48d6 !important; } /* 예배준비팀: 보라색 계열 */
+        .user-info span[style*="#4caf50"] { color: #43b35f !important; } /* 교인: 녹색 계열 */
+
+
         .status-box {
-            background-color: #e3f2fd;
-            border: 1px solid #bbdefb;
-            padding: 20px;
-            border-radius: 8px;
-            margin-bottom: 30px;
+            background-color: #f2f4f6; /* 밝은 회색 배경 */
+            border: 1px solid #e0e0e0; /* 연한 테두리 */
+            padding: 28px; /* 패딩 증가 */
+            border-radius: 12px; /* 둥근 모서리 */
+            margin-bottom: 40px; /* 간격 증가 */
+            text-align: left; /* 텍스트 왼쪽 정렬 */
+            position: relative; /* 자식 요소 위치 지정 대비 */
         }
         .status-box h3 {
-            color: #1976d2;
+            color: #333; /* 제목 색상 */
+            font-size: 20px; /* 폰트 크기 조정 */
+            font-weight: 700; /* 볼드 */
             margin-top: 0;
-            margin-bottom: 15px;
-            font-size: 1.5em;
+            margin-bottom: 16px; /* 간격 */
         }
-        #current-status-display, #progress-message-display { /* ID 추가 */
-            font-size: 1.8em;
-            font-weight: bold;
-            color: #d32f2f; /* 기본적으로 빨간색, 변경 가능 */
+        #current-status-display {
+            font-size: 24px; /* 더 큰 폰트 크기 */
+            font-weight: 700; /* 더 강조 */
+            margin-top: 10px;
+            margin-bottom: 12px;
+            display: block; /* 블록 요소로 만들어 줄바꿈 */
+            text-align: left; /* 왼쪽 정렬 */
+            color: #b0b8c1; /* 기본적으로 연한 회색 */
         }
-        #current-status-display.completed { color: #388e3c; } /* 완료 시 녹색 */
-        #current-status-display.processing { color: #fbc02d; } /* 진행 중 시 주황색 */
-        #current-status-display.pending { color: #007bff; } /* 대기 중 시 파란색 */
+        /* 상태에 따른 색상 */
+        #current-status-display.completed { color: #43b35f; } /* 완료 시 토스 녹색 계열 */
+        #current-status-display.processing { color: #ff9100; } /* 진행 중 시 주황색 */
+        #current-status-display.pending { color: #3462fe; } /* 대기 중 시 토스 블루 */
+        #current-status-display.error, #current-status-display.failed { color: #ff5252; } /* 오류/실패 시 빨간색 */
+
 
         /* 진행 메시지 스타일 */
         #progress-message-display {
-            font-size: 1.2em;
-            color: #666;
+            font-size: 15px;
+            color: #6b7684; /* 부드러운 회색 텍스트 */
             margin-top: 10px;
             min-height: 1.5em; /* 메시지가 없을 때 공간 확보 */
+            text-align: left; /* 왼쪽 정렬 */
+            padding-left: 0; /* 기존 padding-left 제거 */
+            white-space: pre-wrap; /* 줄바꿈 유지 */
+            line-height: 1.6; /* 줄 간격 */
+            max-height: 120px; /* 최대 높이 설정 */
+            overflow-y: auto; /* 내용이 길어지면 스크롤 */
+            border-top: 1px dashed #e0e0e0; /* 구분선 */
+            padding-top: 16px;
+            margin-top: 20px;
         }
 
+        /* 다운로드 버튼 컨테이너 */
+        #download-button-container {
+            margin-top: 24px; /* 간격 조정 */
+            text-align: center; /* 버튼 중앙 정렬 */
+        }
 
         .button-group {
-            margin-top: 30px;
+            margin-top: 40px; /* 상단 간격 증가 */
             display: flex;
             flex-wrap: wrap;
             justify-content: center;
-            gap: 15px; /* 버튼 간 간격 */
+            gap: 16px; /* 버튼 간 간격 */
         }
         .action-button {
-            background-color: #4CAF50; /* Green */
-            color: white;
-            padding: 12px 25px;
+            background-color: #3462fe; /* 토스 메인 블루 */
+            color: #ffffff;
+            padding: 16px 28px; /* 패딩 증가 */
             border: none;
-            border-radius: 8px;
+            border-radius: 12px; /* 더 둥근 모서리 */
             cursor: pointer;
-            font-size: 1.1em;
+            font-size: 17px; /* 폰트 크기 조정 */
+            font-weight: 700; /* 볼드 */
             text-decoration: none;
-            transition: background-color 0.3s ease, transform 0.2s ease;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            transition: background-color 0.2s ease, transform 0.1s ease, box-shadow 0.2s ease;
+            box-shadow: 0 4px 10px rgba(52, 98, 254, 0.2); /* 부드러운 그림자 */
             flex: 1 1 auto; /* 유연하게 확장/축소 */
-            min-width: 200px; /* 최소 너비 */
-            max-width: 250px;
+            min-width: 240px; /* 최소 너비 */
+            max-width: 280px; /* 최대 너비 */
+            display: inline-flex; /* 텍스트 및 아이콘 정렬 위해 */
+            align-items: center;
+            justify-content: center;
         }
         .action-button:hover {
-            background-color: #45a049;
-            transform: translateY(-2px);
+            background-color: #2854dd; /* 호버 시 진한 블루 */
+            transform: translateY(-1px); /* 살짝 위로 이동 효과 */
+            box-shadow: 0 6px 14px rgba(52, 98, 254, 0.3); /* 그림자 진하게 */
         }
-        .action-button.primary { background-color: #007bff; }
-        .action-button.primary:hover { background-color: #0056b3; }
-        .action-button.secondary { background-color: #6c757d; }
-        .action-button.secondary:hover { background-color: #5a6268; }
-        .action-button.danger { background-color: #dc3545; }
-        .action-button.danger:hover { background-color: #c82333; }
+        .action-button.primary { /* PPT 제작, 다운로드 버튼 */
+             background-color: #3462fe;
+             box-shadow: 0 4px 10px rgba(52, 98, 254, 0.2);
+        }
+        .action-button.primary:hover {
+            background-color: #2854dd;
+            box-shadow: 0 6px 14px rgba(52, 98, 254, 0.3);
+        }
+        .action-button.secondary { /* 예배 정보, 찬양 정보 입력 버튼 */
+            background-color: #f2f4f6; /* 연한 회색 배경 */
+            color: #4e5968; /* 진한 회색 텍스트 */
+            border: 1px solid #e0e0e0; /* 테두리 */
+            box-shadow: none; /* 그림자 없음 */
+        }
+        .action-button.secondary:hover {
+            background-color: #e6e8eb; /* 호버 시 조금 더 진한 회색 */
+            color: #333;
+            border-color: #d1d9e1;
+            transform: translateY(-1px);
+            box-shadow: none;
+        }
+        .action-button.danger { /* 위험 버튼 (예: 삭제, 이 페이지에는 없음) */
+            background-color: #ff5252;
+            box-shadow: 0 4px 10px rgba(255, 82, 82, 0.2);
+        }
+        .action-button.danger:hover {
+            background-color: #e64a4a;
+            box-shadow: 0 6px 14px rgba(255, 82, 82, 0.3);
+        }
 
-        /* 로그아웃 버튼 스타일 (a 태그가 아닌 button 태그에 적용) */
+        /* 로그아웃 버튼 스타일 */
+        .logout-form {
+            margin-top: 40px; /* 상단 간격 증가 */
+        }
         .logout-form button {
-            margin-top: 40px;
-            padding: 10px 20px;
-            background-color: #dc3545;
-            color: white;
-            border: 1px solid #dc3545; /* 테두리 색상 추가 */
-            border-radius: 5px;
+            padding: 12px 24px; /* 패딩 조정 */
+            background-color: #f2f4f6; /* 연한 회색 배경 */
+            color: #8b95a1; /* 회색 텍스트 */
+            border: 1px solid #e0e0e0; /* 테두리 */
+            border-radius: 10px; /* 둥근 모서리 */
             cursor: pointer;
-            font-weight: bold;
-            font-size: 1.1em;
-            transition: all 0.3s ease;
-            text-decoration: none; /* a 태그가 아니므로 필요 없지만, 시각적 일관성 위해 남김 */
+            font-weight: 500; /* 미디엄 볼드 */
+            font-size: 16px;
+            transition: all 0.2s ease;
         }
         .logout-form button:hover {
-            background-color: #c82333;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            background-color: #e6e8eb; /* 호버 시 조금 더 진한 회색 */
+            color: #6b7684;
+            border-color: #d1d9e1;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
         }
     </style>
 </head>
@@ -138,12 +210,10 @@
             <h3>{{ upcoming_sunday }} 주일 예배 PPT 현황</h3>
             {# 현황 메시지 및 진행 메시지를 업데이트할 요소 #}
             <p id="current-status-display" class="status-message 
-                {% if ppt_status_display == '제작 완료' %}completed{% elif ppt_status_display == '제작 중' %}processing{% elif ppt_status_display == '대기 중' %}pending{% endif %}">
+                {% if ppt_status_display == '제작 완료' %}completed{% elif ppt_status_display == '제작 중' %}processing{% elif ppt_status_display == '대기 중' %}pending{% elif ppt_status_display == '제작 실패' %}failed{% endif %}">
                 {{ ppt_status_display }}
             </p>
-            <p id="progress-message-display">{{ ppt_request.progress_message|default:"" }}</p> {# 진행 상황 메시지 표시 #}
-            
-            {# 다운로드 버튼은 JavaScript에서 동적으로 활성화/변경될 수 있도록 ID 추가 #}
+            <p id="progress-message-display">{{ ppt_request.progress_message|default:"- 진행 상황 없음 -" }}</p>
             <div id="download-button-container">
                 {% if show_ppt_download_button %}
                     <a href="{{ ppt_request.generated_ppt_file.url }}" class="action-button primary" download>PPT 다운로드</a>
@@ -180,105 +250,148 @@
             const progressMessageDisplay = document.getElementById('progress-message-display');
             const downloadButtonContainer = document.getElementById('download-button-container');
             const pptCreationStartButtonContainer = document.getElementById('ppt-creation-start-button-container');
+            const pptCreationStartButton = document.getElementById('ppt-creation-start-button'); // 버튼 요소 직접 가져옴
 
-            // Django 템플릿 변수를 JavaScript 변수로 가져오기
-            // Celery 태스크 ID는 PPT 요청이 있는 경우에만 가져옵니다.
-            const pptRequestId = "{{ ppt_request.id }}"; // PptRequest ID
-            const celeryTaskId = "{{ ppt_request.celery_task_id|default:'' }}"; // Celery Task ID
-            const initialStatus = "{{ ppt_request.status|default:'none' }}"; // 초기 상태
+            const celeryTaskId = "{{ ppt_request.celery_task_id|default:'' }}";
+            const initialStatus = "{{ ppt_request.status|default:'none' }}";
+            const initialProgressMessage = "{{ ppt_request.progress_message|default:'' }}";
             
-            let pollingInterval; // 폴링 인터벌 ID
+            let pollingInterval;
+            let mockProgressTimeout;
+            let currentMockMessageIndex = 0;
+            let accumulatedProgressText = '';
 
+            // AI 서비스처럼 단계별로 보여줄 모의 메시지 정의
+            // text: 표시할 메시지, duration: 다음 메시지까지의 대기 시간(ms)
+            const MOCK_PROGRESS_MESSAGES = [
+                { text: '예배 정보 수집 중...', duration: 500 },
+                { text: '찬양 정보 수집 중...', duration: 500 },
+                { text: '가사 데이터 추출 중...', duration: 1500 },
+                { text: '찬양 정보 정리 중...', duration: 1500 },
+                { text: 'PPT 템플릿 로드 중...', duration: 1000 },
+                { text: 'PPT 슬라이드 생성 중...', duration: 1000 },
+                { text: '최종 PPT 파일 생성 중...', duration: 2000 },
+                // 이 메시지들 이후 실제 폴링 시작
+            ];
+            
+            // UI 업데이트 함수
             function updateStatusUI(status, statusDisplay, progressMessage, downloadUrl = null) {
-                // 상태 메시지 업데이트
+                // 상태 텍스트 및 클래스 업데이트
                 currentStatusDisplay.textContent = statusDisplay;
-                currentStatusDisplay.className = 'status-message ' + status; // CSS 클래스 업데이트
+                currentStatusDisplay.className = `status-message ${status}`;
                 
-                // 진행 메시지 업데이트
-                progressMessageDisplay.textContent = progressMessage;
+                // 진행 메시지 업데이트 (누적)
+                // 실제 API 응답 시에는 API가 준 메시지로 대체
+                progressMessageDisplay.textContent = progressMessage; 
 
                 // 버튼 상태 업데이트
                 if (status === 'processing') {
-                    // 제작 중일 때는 'PPT 제작 시작' 버튼을 비활성화하거나 숨김
-                    if (pptCreationStartButtonContainer) {
-                        pptCreationStartButtonContainer.style.display = 'none';
-                    }
-                    // 다운로드 버튼 숨김 (아직 완료 안 됐으므로)
+                    if (pptCreationStartButtonContainer) pptCreationStartButtonContainer.style.display = 'none';
                     downloadButtonContainer.innerHTML = ''; 
                 } else if (status === 'completed') {
-                    // 완료되면 'PPT 제작 시작' 버튼 숨김
-                    if (pptCreationStartButtonContainer) {
-                        pptCreationStartButtonContainer.style.display = 'none';
-                    }
-                    // 다운로드 버튼 활성화
+                    if (pptCreationStartButtonContainer) pptCreationStartButtonContainer.style.display = 'none';
                     if (downloadUrl) {
                         downloadButtonContainer.innerHTML = `<a href="${downloadUrl}" class="action-button primary" download>PPT 다운로드</a>`;
                     } else {
                         downloadButtonContainer.innerHTML = '';
                     }
-                    // 알림 (한 번만)
                     if (!sessionStorage.getItem('ppt_completed_notified_' + celeryTaskId)) {
-                        alert(`${progressMessage}`);
                         sessionStorage.setItem('ppt_completed_notified_' + celeryTaskId, 'true');
                     }
                     clearInterval(pollingInterval); // 폴링 중지
-                } else if (status === 'failed') {
-                    // 실패하면 'PPT 제작 시작' 버튼을 다시 표시할지 여부 결정 (현재 로직에서는 home 뷰에서 판단)
-                    // messages.warning('PPT 제작이 실패했습니다. 다시 시도해 주세요.'); // Django messages는 서버에서 전달됨
+                    clearTimeout(mockProgressTimeout); // 모의 진행 중이면 중지
+                } else if (status === 'failed' || status === 'error') { /* 'error' 상태 추가 */
                     if (pptCreationStartButtonContainer) {
-                        pptCreationStartButtonContainer.style.display = 'block'; // 가정: 실패하면 다시 시작 가능
+                        pptCreationStartButtonContainer.style.display = 'block'; // 실패 시 다시 시작 버튼 표시
                     }
-                    downloadButtonContainer.innerHTML = ''; // 다운로드 버튼 제거
-                    // 알림 (한 번만)
+                    downloadButtonContainer.innerHTML = '';
                     if (!sessionStorage.getItem('ppt_failed_notified_' + celeryTaskId)) {
                         alert(`PPT 제작이 실패했습니다: ${progressMessage}. 다시 시도해주세요.`);
                         sessionStorage.setItem('ppt_failed_notified_' + celeryTaskId, 'true');
                     }
                     clearInterval(pollingInterval); // 폴링 중지
-                } else { // pending, no_info, not_found 등
-                    // PPT 제작 시작 버튼을 원래대로 표시 (home 뷰 로직에 따름)
+                    clearTimeout(mockProgressTimeout); // 모의 진행 중이면 중지
+                } else { // none, no_info, not_found 등 (진행 중이 아니면)
                     if (pptCreationStartButtonContainer) {
+                         // 초기 display 속성으로 복원
                          const initialDisplay = pptCreationStartButtonContainer.dataset.initialDisplay || '';
-                         pptCreationStartButtonContainer.style.display = initialDisplay; // 초기 상태로 되돌림
+                         pptCreationStartButtonContainer.style.display = initialDisplay;
                     }
-                    downloadButtonContainer.innerHTML = ''; // 다운로드 버튼 제거
-                    clearInterval(pollingInterval); // 폴링 중지 (더 이상 진행되지 않는 상태)
+                    downloadButtonContainer.innerHTML = '';
+                    clearInterval(pollingInterval);
+                    clearTimeout(mockProgressTimeout);
                 }
             }
 
-            // 폴링 함수
+            // 모의 진행 메시지 순차적으로 표시
+            function displayNextMockMessage() {
+                if (currentMockMessageIndex < MOCK_PROGRESS_MESSAGES.length) {
+                    const msg = MOCK_PROGRESS_MESSAGES[currentMockMessageIndex];
+                    // 누적된 메시지 초기화 후 다시 쌓기 (단계별 진행처럼 보이게)
+                    // 또는 progressMessageDisplay.textContent = msg.text; 로 교체 (한 메시지만 보이게)
+                    accumulatedProgressText = msg.text; // 현재 메시지만 표시
+                    progressMessageDisplay.textContent = accumulatedProgressText;
+
+                    currentMockMessageIndex++;
+                    mockProgressTimeout = setTimeout(displayNextMockMessage, msg.duration);
+                } else {
+                    // 모든 모의 메시지 표시 완료 후 실제 폴링 시작
+                    clearTimeout(mockProgressTimeout);
+                    
+                    // 첫 폴링 요청
+                    pollPptStatus();
+                    pollingInterval = setInterval(pollPptStatus, 5000); // 5초 간격으로 폴링 시작
+                }
+            }
+
+            // 실제 폴링 함수
             function pollPptStatus() {
-                if (!celeryTaskId || initialStatus === 'completed' || initialStatus === 'failed') {
-                    clearInterval(pollingInterval); // 이미 완료/실패되었거나 태스크 ID가 없으면 폴링 중지
+                if (!celeryTaskId || (initialStatus !== 'processing' && initialStatus !== 'pending')) {
+                    clearInterval(pollingInterval);
                     return;
                 }
                 
                 fetch(`/api/ppt-status/${celeryTaskId}/`)
-                    .then(response => response.json())
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error(`HTTP error! status: ${response.status}`);
+                        }
+                        return response.json();
+                    })
                     .then(data => {
                         updateStatusUI(data.status, data.status_display, data.progress_message, data.download_url);
-                        if (data.status === 'completed' || data.status === 'failed') {
-                            clearInterval(pollingInterval); // 작업 완료/실패 시 폴링 중지
+                        if (data.status === 'completed' || data.status === 'failed' || data.status === 'not_found' || data.status === 'error') {
+                            clearInterval(pollingInterval);
                         }
                     })
                     .catch(error => {
                         console.error('Error polling PPT status:', error);
-                        // 오류 발생 시에도 사용자에게 알림을 줄 수 있음
                         progressMessageDisplay.textContent = '상태 업데이트 중 오류 발생.';
-                        clearInterval(pollingInterval); // 오류 발생 시 폴링 중지
+                        currentStatusDisplay.className = 'status-message error'; // 오류 상태 표시
+                        clearInterval(pollingInterval);
                     });
             }
 
-            // PPT 제작이 시작된 상태라면 폴링 시작
+            // 페이지 로드 시 초기 상태 확인 및 동작 시작
+            // status === 'processing' 또는 'pending'일 때만 모의 진행 및 폴링 시작
             if (celeryTaskId && (initialStatus === 'processing' || initialStatus === 'pending')) {
-                // 초기 'PPT 제작 시작' 버튼의 display 속성을 저장 (나중에 복원하기 위해)
+                // 최초 진입 시 버튼 숨기고 모의 진행 시작
                 if (pptCreationStartButtonContainer) {
                     pptCreationStartButtonContainer.dataset.initialDisplay = window.getComputedStyle(pptCreationStartButtonContainer).display;
+                    pptCreationStartButtonContainer.style.display = 'none'; // 초기에는 숨김
                 }
-                // 최초 한 번 상태 업데이트
-                pollPptStatus();
-                // 5초마다 폴링 시작
-                pollingInterval = setInterval(pollPptStatus, 5000); // 5초마다 업데이트
+                // 기존 진행 메시지가 있다면 초기화하지 않고 시작
+                accumulatedProgressText = initialProgressMessage;
+                progressMessageDisplay.textContent = accumulatedProgressText; // 기존 메시지 먼저 표시
+
+                // 모의 진행 메시지 시작
+                // 이미 진행 중인 경우, mock messages를 건너뛸지 아니면 재시작할지 결정해야 합니다.
+                // 여기서는 항상 모의 메시지부터 시작하도록 설정합니다.
+                currentMockMessageIndex = 0; // 모의 메시지 인덱스 초기화
+                displayNextMockMessage(); // 첫 메시지부터 시작
+            } else {
+                // 진행 중이 아닌 상태 (완료, 실패, 없음 등)일 경우, 초기 UI를 즉시 설정
+                updateStatusUI(initialStatus, currentStatusDisplay.textContent, initialProgressMessage);
             }
         });
     </script>

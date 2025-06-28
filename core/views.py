@@ -110,6 +110,7 @@ def home(request):
         'show_ppt_creation_start_button': user_is_media_team and ppt_request and ppt_request.status != 'completed',
         'show_worship_info_input_button': (user_is_worship_prep_team or user_is_media_team) and not worship_info,
         'show_song_info_input_button': (user_is_praise_team or user_is_media_team) and worship_info and not SongInfo.objects.filter(worship_info=worship_info).exists(),
+        'show_ppt_download_button': ppt_request and ppt_request.generated_ppt_file and ppt_request.status == 'completed',
     }
 
     return render(request, 'core/home.html', context)
