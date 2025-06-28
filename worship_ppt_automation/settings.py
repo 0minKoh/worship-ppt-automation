@@ -141,6 +141,6 @@ LOGIN_REDIRECT_URL = '/'
 LOGIN_URL = '/accounts/login/'
 LOGOUT_REDIRECT_URL = '/accounts/login/'
 
-# Gemini API Key (이미 os.environ.get으로 잘 되어 있습니다)
+
 # utils/llm.py에서 settings.GEMINI_API_KEY를 참조합니다.
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY") # 실제 키는 .env 파일에

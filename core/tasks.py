@@ -11,7 +11,7 @@ import os
 import json
 import re
 
-# LLM 함수 임포트 (LLM 연동 제외 요청에 따라 make_requirements_of_paster_json은 더 이상 호출하지 않습니다.)
+# LLM 함수 임포트
 from utils.llm import split_lyrics_to_json # 가사 분할은 여전히 LLM 사용
 # 성경 구절 가져오는 함수는 bible_text_parser.py에서 가져옴
 from utils.bible_text_parser import get_bible_contents as get_local_bible_contents
@@ -104,26 +104,30 @@ def generate_ppt_task(self: TaskType, worship_info_id: int):
                     ppt_request.save()
                     current_lyrics = "가사를 찾을 수 없습니다."
 
-            if not current_lyrics_pages and current_lyrics:
+            # 가사 분할 (이제 LLM_split_lyrics_to_json 사용)
+            if song.lyrics and song.lyrics != "가사를 가져올 수 없습니다.":
                 ppt_request.progress_message = f"'{song.title}' 가사를 AI로 분할 중입니다..."
                 ppt_request.save()
                 self.update_state(state='PROGRESS', meta={'progress': 40, 'message': ppt_request.progress_message})
-                # LLM 연동 제외 요청에 따라 이 부분을 LLM 호출 대신 임시 로직으로 대체
-                # 실제 LLM 연동 시에는 split_lyrics_to_json([{"title": song.title, "lyrics": current_lyrics}]) 호출
                 
-                # 임시 로직: 가사를 간단히 줄바꿈 기준으로 분할
-                lines = current_lyrics.split('\n')
-                chunk_size = 4 # 한 슬라이드당 4줄
-                current_lyrics_pages = ["\n".join(lines[i:i + chunk_size]) for i in range(0, len(lines), chunk_size) if "\n".join(lines[i:i + chunk_size]).strip()]
-                if not current_lyrics_pages: # 빈 가사일 경우
-                    current_lyrics_pages = ["가사를 분할할 수 없습니다."]
-
-                song.lyrics_pages = current_lyrics_pages # 모델에 업데이트
+                # LLM 연동 활성화: utils.llm.split_lyrics_to_json 호출
+                splitted_res = split_lyrics_to_json([{"title": song.title, "lyrics": song.lyrics}])
+                
+                if splitted_res and splitted_res[0].get("splitted_lyrics"):
+                    song.lyrics_pages = splitted_res[0]["splitted_lyrics"]
+                    song.save()
+                else:
+                    ppt_request.progress_message = f"'{song.title}' 가사 분할 실패. 전체 가사 사용."
+                    ppt_request.save()
+                    song.lyrics_pages = [song.lyrics]
+                    song.save()
+            elif not song.lyrics_pages:
+                song.lyrics_pages = ["가사를 가져올 수 없습니다."]
                 song.save()
 
             songs_data_for_ppt.append({
                 "title": song.title,
-                "splitted_lyrics": current_lyrics_pages
+                "splitted_lyrics": song.lyrics_pages
             })
         
         SLIDE_INDEX_START_SONG = 5
@@ -222,17 +226,19 @@ def generate_ppt_task(self: TaskType, worship_info_id: int):
                 ppt_request.progress_message = f"'{ending_song.title}' 가사를 AI로 분할 중입니다..."
                 ppt_request.save()
                 self.update_state(state='PROGRESS', meta={'progress': 92, 'message': ppt_request.progress_message})
-                # LLM 연동 제외 요청에 따라 이 부분을 LLM 호출 대신 임시 로직으로 대체
-                # 실제 LLM 연동 시에는 split_lyrics_to_json([{"title": ending_song.title, "lyrics": current_lyrics}]) 호출
-
-                # 임시 로직: 가사를 간단히 줄바꿈 기준으로 분할
-                lines = current_lyrics.split('\n')
-                chunk_size = 4 # 한 슬라이드당 4줄
-                current_lyrics_pages = ["\n".join(lines[i:i + chunk_size]) for i in range(0, len(lines), chunk_size) if "\n".join(lines[i:i + chunk_size]).strip()]
-                if not current_lyrics_pages:
-                    current_lyrics_pages = ["가사를 분할할 수 없습니다."]
-
-                ending_song.lyrics_pages = current_lyrics_pages
+                # LLM 연동 활성화: utils.llm.split_lyrics_to_json 호출
+                splitted_res = split_lyrics_to_json([{"title": ending_song.title, "lyrics": ending_song.lyrics}])
+                
+                if splitted_res and splitted_res[0].get("splitted_lyrics"):
+                    ending_song.lyrics_pages = splitted_res[0]["splitted_lyrics"]
+                    ending_song.save()
+                else:
+                    ppt_request.progress_message = f"'{ending_song.title}' 가사 분할 실패. 전체 가사 사용."
+                    ppt_request.save()
+                    ending_song.lyrics_pages = [ending_song.lyrics]
+                    ending_song.save()
+            elif not ending_song.lyrics_pages:
+                ending_song.lyrics_pages = ["가사를 가져올 수 없습니다."]
                 ending_song.save()
 
             added_slide_res = add_lyrics_slides(
