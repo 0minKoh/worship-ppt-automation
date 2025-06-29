@@ -43,13 +43,12 @@
     
     ![PPT 제작 시작 확인 페이지](/docs/img/ppt_start_page.png)
     *이미지 설명: PPT 제작을 시작하기 전, 최종 정보를 확인하고 제작을 요청하는 페이지입니다. '제작 시작하기' 버튼을 클릭하면 Celery 태스크가 트리거됩니다.*
+    
 
-    <video src="/docs/img/ppt_progress_status.mp4" style="width: 100%;" controls>
-    </video>
+    <video src="https://github.com/user-attachments/assets/83358c1a-4bbf-4a2e-9243-c64f6cfc1f03"></video>
+    *설명: PPT 제작이 진행될 때 메인 대시보드에 표시되는 실시간 진행 상황 메시지입니다. AI가 생각하는 것처럼 메시지가 순차적으로 누적되며, 이후 실제 Celery 태스크의 진행 메시지로 전환됩니다.*
 
-    *이미지 설명: PPT 제작이 진행될 때 메인 대시보드에 표시되는 실시간 진행 상황 메시지입니다. AI가 생각하는 것처럼 메시지가 순차적으로 누적되며, 이후 실제 Celery 태스크의 진행 메시지로 전환됩니다.*
-
-5.  **PPT 다운로드:**
+4.  **PPT 다운로드:**
     PPT 제작이 완료되면 사용자에게 알림이 전송되고, 'PPT 다운로드' 버튼이 활성화됩니다. 사용자는 클릭 한 번으로 최종 생성된 PPT 파일을 다운로드할 수 있습니다.
 
     ![PPT 다운로드 완료 화면](/docs/img/ppt_download_complete.png)
